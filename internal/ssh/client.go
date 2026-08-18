@@ -33,6 +33,12 @@ func Connect(host, port, user, password, keyPath string) (*Client, error) {
 
 	// Prefer SSH Key if provided
 	if keyPath != "" {
+		// 展开 ~ 为用户主目录（os.ReadFile 不会自动展开 ~）
+		if strings.HasPrefix(keyPath, "~") {
+			if home, err := os.UserHomeDir(); err == nil {
+				keyPath = home + strings.TrimPrefix(keyPath, "~")
+			}
+		}
 		key, err := os.ReadFile(keyPath)
 		if err != nil {
 			return nil, fmt.Errorf("unable to read private key: %v", err)
@@ -102,7 +108,7 @@ func (c *Client) Run(cmd string) (string, error) {
 func (c *Client) DeployAndRunAgent() ([]byte, error) {
 	// 0. Detect target OS
 	targetOS := "linux"
-	
+
 	unameOut, _ := c.Run("uname -s")
 	if strings.Contains(strings.ToLower(unameOut), "windows") || unameOut == "" {
 		osOut, _ := c.Run("echo %OS%")
@@ -146,7 +152,7 @@ func (c *Client) DeployAndRunAgent() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create push session: %v", err)
 	}
-	
+
 	stdinPipe, err := session.StdinPipe()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get stdin pipe: %v", err)
@@ -173,7 +179,7 @@ func (c *Client) DeployAndRunAgent() ([]byte, error) {
 		io.Copy(stdinPipe, bytes.NewReader(binaryData))
 	}
 	stdinPipe.Close()
-	
+
 	session.Wait() // Wait for transfer and chmod to finish
 
 	// 4. Execute the agent and capture JSON payload
