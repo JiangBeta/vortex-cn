@@ -75,6 +75,30 @@ type switchTabMsg struct{ idx int }
 type toggleWallpaperMsg struct{}
 type switchThemeMsg struct{ name string }
 
+// titleToKeybind 将模块标题映射到 config.Keybinds 的键名（用于在 sidebar 标注快捷键）。
+var titleToKeybind = map[string]string{
+	"Servers":         "Servers",
+	"Mission Control": "Dashboard",
+	"Processes":       "Processes",
+	"Docker":          "Docker",
+	"Services":        "Services",
+	"Files":           "Files",
+	"Logs":            "Logs",
+	"Security":        "Security",
+	"Backups":         "Backup",
+	"Cron":            "Cron",
+	"Certs":           "Certs",
+	"Users & Keys":    "Users",
+	"Alerts":          "Alerts",
+	"Audit Log":       "Audit",
+	"Databases":       "Database",
+	"Proxy":           "Proxy",
+	"Secrets":         "Secrets",
+	"Deploy":          "Deploy",
+	"Snapshots":       "Snapshots",
+	"Uptime Monitor":  "Uptime",
+}
+
 func initialModel() Router {
 	r := Router{
 		startup: components.NewStartup(),
@@ -435,14 +459,14 @@ func (r Router) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case config.CurrentConfig.Keybinds["Command Palette"]:
 			r.palette.Active = !r.palette.Active
 			return r, nil
-		case "shift+up", "[":
+		case "up", "shift+up", "[":
 			if r.sidebarIdx > 0 {
 				r.sidebarIdx--
 			} else {
 				r.sidebarIdx = len(r.pages) - 1
 			}
 			return r, nil
-		case "shift+down", "]":
+		case "down", "shift+down", "]":
 			if r.sidebarIdx < len(r.pages)-1 {
 				r.sidebarIdx++
 			} else {
@@ -788,6 +812,13 @@ func (r Router) View() string {
 		}
 
 		label := fmt.Sprintf("%s  %s", icon, displayTitle)
+
+		// 标注快捷键，如「服务（S）」
+		if kb, ok := titleToKeybind[title]; ok {
+			if key := config.CurrentConfig.Keybinds[kb]; key != "" {
+				label = fmt.Sprintf("%s  %s（%s）", icon, displayTitle, strings.ToUpper(key))
+			}
+		}
 
 		// Add live counts to label
 		countStr := ""
