@@ -202,7 +202,7 @@ func GetDefaultConfig() Config {
 			"Deploy":          "y",
 			"Snapshots":       "h",
 			"Uptime":          "m",
-			"Backup":          "k",
+			"Backup":          "z",
 			"Command Palette": "ctrl+p",
 		},
 		UptimeTargets: []UptimeMonitorConfig{
