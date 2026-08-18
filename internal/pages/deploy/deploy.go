@@ -9,6 +9,7 @@ import (
 
 	"main/internal/components"
 	deployengine "main/internal/engine/deploy"
+	"main/internal/i18n"
 	sshlib "main/internal/ssh"
 	"main/internal/theme"
 )
@@ -22,20 +23,20 @@ const (
 )
 
 type Model struct {
-	engine     *deployengine.Engine
-	mode       Mode
-	
+	engine *deployengine.Engine
+	mode   Mode
+
 	// Config fields
 	appDir     string
 	buildCmd   string
 	restartCmd string
 	healthUrl  string
-	
+
 	focusIndex int
-	
+
 	// Live output
-	logs       []string
-	outChan    <-chan string
+	logs    []string
+	outChan <-chan string
 }
 
 func New() Model {
@@ -128,17 +129,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Trigger Deploy
 				if m.engine != nil {
 					m.mode = ModeDeploying
-					m.logs = []string{"Starting deployment..."}
+					m.logs = []string{i18n.T("Starting deployment...")}
 					outChan, err := m.engine.Deploy(m.appDir, m.buildCmd, m.restartCmd, m.healthUrl)
 					if err != nil {
-						m.logs = append(m.logs, "Error starting deployment: "+err.Error())
+						m.logs = append(m.logs, i18n.T("Error starting deployment: ")+err.Error())
 						m.mode = ModeDone
 						return m, nil
 					}
 					m.outChan = outChan
 					return m, waitForLogs(m.outChan)
 				} else {
-					m.logs = []string{"Engine not connected"}
+					m.logs = []string{i18n.T("Engine not connected")}
 					m.mode = ModeDone
 				}
 			} else {
@@ -187,14 +188,14 @@ func (m Model) View() string {
 }
 
 func (m Model) renderConfig() string {
-	title := "DEPLOYMENT PIPELINE (v1.9)"
-	
+	title := i18n.T("DEPLOYMENT PIPELINE (v1.9)")
+
 	activeStyle := lipgloss.NewStyle().Foreground(theme.Current.Primary).Bold(true)
 	inactiveStyle := lipgloss.NewStyle().Foreground(theme.Current.Text)
 	dimStyle := lipgloss.NewStyle().Foreground(theme.Current.Dim)
 
 	var items string
-	
+
 	renderField := func(idx int, label string, val string) string {
 		cursor := "  "
 		style := inactiveStyle
@@ -202,21 +203,21 @@ func (m Model) renderConfig() string {
 			cursor = "▶ "
 			style = activeStyle
 		}
-		
+
 		valDisplay := val
 		if m.focusIndex == idx {
 			valDisplay += "█"
 		} else if val == "" {
-			valDisplay = dimStyle.Render("(empty)")
+			valDisplay = dimStyle.Render(i18n.T("(empty)"))
 		}
-		
+
 		return fmt.Sprintf("%s%-15s %s\n", cursor, style.Render(label+":"), style.Render(valDisplay))
 	}
 
-	items += renderField(0, "App Directory", m.appDir) + "\n"
-	items += renderField(1, "Build Command", m.buildCmd) + "\n"
-	items += renderField(2, "Restart Command", m.restartCmd) + "\n"
-	items += renderField(3, "Health URL", m.healthUrl) + "\n"
+	items += renderField(0, i18n.T("App Directory"), m.appDir) + "\n"
+	items += renderField(1, i18n.T("Build Command"), m.buildCmd) + "\n"
+	items += renderField(2, i18n.T("Restart Command"), m.restartCmd) + "\n"
+	items += renderField(3, i18n.T("Health URL"), m.healthUrl) + "\n"
 
 	// Button
 	btnCursor := "  "
@@ -225,10 +226,10 @@ func (m Model) renderConfig() string {
 		btnCursor = "▶ "
 		btnStyle = lipgloss.NewStyle().Foreground(theme.Current.Text).Background(theme.Current.Success).Bold(true)
 	}
-	items += "\n" + btnCursor + btnStyle.Render(" [ DEPLOY NOW ] ") + "\n"
-	
-	items += "\n" + dimStyle.Render("Webhooks enabled: POST /deploy on port 8080 will trigger this config.")
-	items += "\n" + dimStyle.Render("Logs are sent to Audit Log automatically.")
+	items += "\n" + btnCursor + btnStyle.Render(i18n.T(" [ DEPLOY NOW ] ")) + "\n"
+
+	items += "\n" + dimStyle.Render(i18n.T("Webhooks enabled: POST /deploy on port 8080 will trigger this config."))
+	items += "\n" + dimStyle.Render(i18n.T("Logs are sent to Audit Log automatically."))
 
 	content := lipgloss.JoinVertical(lipgloss.Left,
 		components.Title(title),
@@ -239,9 +240,9 @@ func (m Model) renderConfig() string {
 }
 
 func (m Model) renderLogs() string {
-	title := "DEPLOYMENT PIPELINE - RUNNING"
+	title := i18n.T("DEPLOYMENT PIPELINE - RUNNING")
 	if m.mode == ModeDone {
-		title = "DEPLOYMENT PIPELINE - DONE (Press Enter to return)"
+		title = i18n.T("DEPLOYMENT PIPELINE - DONE (Press Enter to return)")
 	}
 
 	var logsDisplay string
@@ -264,4 +265,4 @@ func (m Model) renderLogs() string {
 }
 
 func (m Model) Title() string { return "Deploy" }
-func (m Model) Icon() string { return "🚀" }
+func (m Model) Icon() string  { return "🚀" }

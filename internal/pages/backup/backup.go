@@ -12,6 +12,7 @@ import (
 	"main/internal/components"
 	"main/internal/config"
 	backupengine "main/internal/engine/backup"
+	"main/internal/i18n"
 	sshlib "main/internal/ssh"
 	"main/internal/theme"
 )
@@ -109,12 +110,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case backupCompleteMsg:
 		if msg.err != nil {
-			m.status = "Operation Failed: " + msg.err.Error()
+			m.status = i18n.T("Operation Failed: ") + msg.err.Error()
 		} else {
 			if msg.job != nil {
-				m.status = "Operation Successful: " + msg.job.ID
+				m.status = i18n.T("Operation Successful: ") + msg.job.ID
 			} else {
-				m.status = "Operation Successful."
+				m.status = i18n.T("Operation Successful.")
 			}
 		}
 		return m, tea.Batch(fetchBackups(m.engine, m.cfg.Backups.DestPath), fetchStorageUsage(m.engine, m.cfg.Backups.DestPath))
@@ -133,7 +134,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if val == "y" || val == "Y" {
 						if len(m.jobs) > 0 && m.engine != nil {
 							job := m.jobs[m.cursor]
-							m.status = "Restoring " + job.ID + "..."
+							m.status = i18n.Tf("Restoring %s...", job.ID)
 							m.state = StateList
 							return m, func() tea.Msg {
 								err := m.engine.RestoreBackup(job.ID)
@@ -148,7 +149,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if val == "y" || val == "Y" {
 						if len(m.jobs) > 0 && m.engine != nil {
 							job := m.jobs[m.cursor]
-							m.status = "Deleting " + job.ID + "..."
+							m.status = i18n.Tf("Deleting %s...", job.ID)
 							m.state = StateList
 							return m, func() tea.Msg {
 								err := m.engine.DeleteBackup(job.ID)
@@ -162,7 +163,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				case StateInputBackupTarget:
 					m.state = StateList
 					if val != "" && m.engine != nil {
-						m.status = "Creating backup of " + val + "..."
+						m.status = i18n.Tf("Creating backup of %s...", val)
 						dest := m.cfg.Backups.DestPath
 						return m, func() tea.Msg {
 							job, err := m.engine.CreateBackup(val, dest, "Manual")
@@ -210,32 +211,32 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "b", "B":
 			m.state = StateInputBackupTarget
-			m.textInput.Placeholder = "Target path (e.g. /etc)"
+			m.textInput.Placeholder = i18n.T("Target path (e.g. /etc)")
 			m.textInput.SetValue("")
 			m.textInput.Focus()
 			return m, textinput.Blink
 		case "c", "C":
 			m.state = StateConfigSchedule
-			m.textInput.Placeholder = "Cron schedule (e.g. 0 2 * * *)"
+			m.textInput.Placeholder = i18n.T("Cron schedule (e.g. 0 2 * * *)")
 			m.textInput.SetValue(m.cfg.Backups.Schedule)
 			m.textInput.Focus()
 			return m, textinput.Blink
 		case "p", "P":
 			m.state = StateConfigDestPath
-			m.textInput.Placeholder = "Destination path"
+			m.textInput.Placeholder = i18n.T("Destination path")
 			m.textInput.SetValue(m.cfg.Backups.DestPath)
 			m.textInput.Focus()
 			return m, textinput.Blink
 		case "t", "T":
 			m.state = StateConfigRetention
-			m.textInput.Placeholder = "Retention (days)"
+			m.textInput.Placeholder = i18n.T("Retention (days)")
 			m.textInput.SetValue(fmt.Sprintf("%d", m.cfg.Backups.Retention))
 			m.textInput.Focus()
 			return m, textinput.Blink
 		case "l", "L":
 			if len(m.jobs) > 0 {
 				m.state = StateConfirmRestore
-				m.textInput.Placeholder = "Type 'y' to confirm restore"
+				m.textInput.Placeholder = i18n.T("Type 'y' to confirm restore")
 				m.textInput.SetValue("")
 				m.textInput.Focus()
 				return m, textinput.Blink
@@ -243,7 +244,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "d", "D":
 			if len(m.jobs) > 0 {
 				m.state = StateConfirmDelete
-				m.textInput.Placeholder = "Type 'y' to confirm delete"
+				m.textInput.Placeholder = i18n.T("Type 'y' to confirm delete")
 				m.textInput.SetValue("")
 				m.textInput.Focus()
 				return m, textinput.Blink
@@ -264,7 +265,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() string {
 	var items string
 	if m.jobs == nil || len(m.jobs) == 0 {
-		items = "No backups found in " + m.cfg.Backups.DestPath + "."
+		items = i18n.Tf("No backups found in %s.", m.cfg.Backups.DestPath)
 	} else {
 		start := 0
 		maxLines := 10
@@ -288,14 +289,14 @@ func (m Model) View() string {
 				cursor = "? "
 				style = lipgloss.NewStyle().Foreground(theme.Current.Primary).Bold(true)
 			}
-			
+
 			sizeTag := lipgloss.NewStyle().Foreground(theme.Current.Accent).Render("[" + job.Size + "]")
 			items += fmt.Sprintf("%s %s %s\n", cursor, sizeTag, style.Render(job.ID))
 		}
 	}
 
 	configInfo := lipgloss.NewStyle().Foreground(theme.Current.Dim).Render(
-		fmt.Sprintf("Dest: %s | Schedule: %s | Retention: %d days | Usage: %s", 
+		i18n.Tf("Dest: %s | Schedule: %s | Retention: %d days | Usage: %s",
 			m.cfg.Backups.DestPath, m.cfg.Backups.Schedule, m.cfg.Backups.Retention, m.storageUsage))
 
 	inputView := ""
@@ -303,44 +304,52 @@ func (m Model) View() string {
 		prompt := ""
 		switch m.state {
 		case StateConfirmRestore:
-			prompt = lipgloss.NewStyle().Foreground(theme.Current.Error).Bold(true).Render("DANGER: Restore will overwrite files! ")
+			prompt = lipgloss.NewStyle().Foreground(theme.Current.Error).Bold(true).Render(i18n.T("DANGER: Restore will overwrite files! "))
 		case StateConfirmDelete:
-			prompt = lipgloss.NewStyle().Foreground(theme.Current.Warning).Bold(true).Render("Delete this backup? ")
+			prompt = lipgloss.NewStyle().Foreground(theme.Current.Warning).Bold(true).Render(i18n.T("Delete this backup? "))
 		case StateInputBackupTarget:
-			prompt = lipgloss.NewStyle().Foreground(theme.Current.Primary).Render("Target directory to backup: ")
+			prompt = lipgloss.NewStyle().Foreground(theme.Current.Primary).Render(i18n.T("Target directory to backup: "))
 		case StateConfigDestPath:
-			prompt = lipgloss.NewStyle().Foreground(theme.Current.Primary).Render("New destination path: ")
+			prompt = lipgloss.NewStyle().Foreground(theme.Current.Primary).Render(i18n.T("New destination path: "))
 		case StateConfigSchedule:
-			prompt = lipgloss.NewStyle().Foreground(theme.Current.Primary).Render("New cron schedule: ")
+			prompt = lipgloss.NewStyle().Foreground(theme.Current.Primary).Render(i18n.T("New cron schedule: "))
 		case StateConfigRetention:
-			prompt = lipgloss.NewStyle().Foreground(theme.Current.Primary).Render("New retention (days): ")
+			prompt = lipgloss.NewStyle().Foreground(theme.Current.Primary).Render(i18n.T("New retention (days): "))
 		}
-		
+
 		translation := ""
 		if m.state == StateConfigSchedule {
 			val := strings.TrimSpace(m.textInput.Value())
 			parts := strings.Fields(val)
-			desc := "Custom schedule or typing..."
-			if val == "* * * * *" { desc = "Every minute" } else if val == "0 * * * *" { desc = "Every hour at minute 0" } else if val == "0 0 * * *" { desc = "Every day at midnight" } else if len(parts) == 5 {
+			desc := i18n.T("Custom schedule or typing...")
+			if val == "* * * * *" {
+				desc = i18n.T("Every minute")
+			} else if val == "0 * * * *" {
+				desc = i18n.T("Every hour at minute 0")
+			} else if val == "0 0 * * *" {
+				desc = i18n.T("Every day at midnight")
+			} else if len(parts) == 5 {
 				min, hr, dom, mon, dow := parts[0], parts[1], parts[2], parts[3], parts[4]
 				if dom == "*" && mon == "*" && dow == "*" && hr != "*" && min != "*" && !strings.Contains(hr, ",") && !strings.Contains(min, ",") {
-					desc = fmt.Sprintf("Every day at %02s:%02s", hr, min)
+					desc = i18n.Tf("Every day at %02s:%02s", hr, min)
 				} else if dom == "*" && mon == "*" && hr != "*" && min != "*" && dow != "*" && !strings.Contains(dow, ",") {
 					days := map[string]string{"0": "Sunday", "1": "Monday", "2": "Tuesday", "3": "Wednesday", "4": "Thursday", "5": "Friday", "6": "Saturday", "7": "Sunday"}
-					if d, ok := days[dow]; ok { desc = fmt.Sprintf("Every %s at %02s:%02s", d, hr, min) }
+					if d, ok := days[dow]; ok {
+						desc = i18n.Tf("Every %s at %02s:%02s", i18n.T(d), hr, min)
+					}
 				}
 			}
-			translation = "\n" + lipgloss.NewStyle().Foreground(theme.Current.Success).Render("Translation: " + desc)
+			translation = "\n" + lipgloss.NewStyle().Foreground(theme.Current.Success).Render(i18n.T("Translation: ")+desc)
 		}
 
-		inputView = "\n\n" + prompt + "\n" + m.textInput.View() + translation + "\n(Press Enter to confirm, Esc to cancel)"
+		inputView = "\n\n" + prompt + "\n" + m.textInput.View() + translation + "\n" + i18n.T("(Press Enter to confirm, Esc to cancel)")
 	}
 
-	controls := lipgloss.NewStyle().Foreground(theme.Current.Dim).Render("\nControls: [up/down] Navigate  [B] Backup  [L] Restore  [D] Delete  [R] Refresh\nConfig:   [C] Schedule  [P] Path  [T] Retention")
-	statusBlock := lipgloss.NewStyle().Foreground(theme.Current.Primary).Render("\nStatus: " + m.status)
+	controls := lipgloss.NewStyle().Foreground(theme.Current.Dim).Render("\n" + i18n.T("Controls: [up/down] Navigate  [B] Backup  [L] Restore  [D] Delete  [R] Refresh\nConfig:   [C] Schedule  [P] Path  [T] Retention"))
+	statusBlock := lipgloss.NewStyle().Foreground(theme.Current.Primary).Render("\n" + i18n.T("Status: ") + i18n.T(m.status))
 
 	content := lipgloss.JoinVertical(lipgloss.Left,
-		components.Title("BACKUP MANAGER"),
+		components.Title(i18n.T("BACKUP MANAGER")),
 		configInfo,
 		"\n"+items,
 		inputView,
@@ -352,4 +361,4 @@ func (m Model) View() string {
 }
 
 func (m Model) Title() string { return "Backups" }
-func (m Model) Icon() string { return "??" }
+func (m Model) Icon() string  { return "??" }

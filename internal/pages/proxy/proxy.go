@@ -10,6 +10,7 @@ import (
 	"main/internal/agent"
 	"main/internal/components"
 	proxyengine "main/internal/engine/proxy"
+	"main/internal/i18n"
 	sshlib "main/internal/ssh"
 	"main/internal/theme"
 )
@@ -22,32 +23,32 @@ const (
 )
 
 type Model struct {
-	engine       *proxyengine.Engine
-	state        AppState
-	proxyType    proxyengine.ProxyType
-	sites        []proxyengine.Site
-	cursor       int
-	
-	textArea     textarea.Model
-	editingFile  string
-	isDirty      bool
-	
+	engine    *proxyengine.Engine
+	state     AppState
+	proxyType proxyengine.ProxyType
+	sites     []proxyengine.Site
+	cursor    int
+
+	textArea    textarea.Model
+	editingFile string
+	isDirty     bool
+
 	loading      bool
 	errorMessage string
-	
-	valOutput    string
+
+	valOutput string
 }
 
 func New() Model {
 	ta := textarea.New()
-	ta.Placeholder = "Empty configuration..."
+	ta.Placeholder = i18n.T("Empty configuration...")
 	ta.SetWidth(80)
 	ta.SetHeight(20)
 
 	return Model{
-		state:     StateBrowsing,
-		textArea:  ta,
-		loading:   true,
+		state:    StateBrowsing,
+		textArea: ta,
+		loading:  true,
 	}
 }
 
@@ -113,12 +114,12 @@ func validateAndReload(engine *proxyengine.Engine, ptype proxyengine.ProxyType) 
 		if err != nil {
 			return validationResultMsg{output: out, err: fmt.Errorf("validation failed")}
 		}
-		
+
 		rOut, rErr := engine.ReloadRestart(ptype)
 		if rErr != nil {
 			return validationResultMsg{output: out + "\n" + rOut, err: fmt.Errorf("reload failed")}
 		}
-		
+
 		return validationResultMsg{output: out + "\n" + rOut + "\nReload successful.", err: nil}
 	}
 }
@@ -130,7 +131,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case detectResultMsg:
 		m.loading = false
 		if msg.err != nil {
-			m.errorMessage = "Error: " + msg.err.Error()
+			m.errorMessage = i18n.T("Error: ") + msg.err.Error()
 			m.sites = []proxyengine.Site{}
 		} else {
 			m.errorMessage = ""
@@ -145,7 +146,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case fileReadMsg:
 		m.loading = false
 		if msg.err != nil {
-			m.errorMessage = "Error reading file: " + msg.err.Error()
+			m.errorMessage = i18n.T("Error reading file: ") + msg.err.Error()
 			m.state = StateBrowsing
 		} else {
 			m.textArea.SetValue(msg.content)
@@ -155,19 +156,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case fileSaveMsg:
 		if msg.err != nil {
-			m.errorMessage = "Error saving file: " + msg.err.Error()
+			m.errorMessage = i18n.T("Error saving file: ") + msg.err.Error()
 		} else {
 			m.isDirty = false
-			m.errorMessage = "File saved successfully. Press CTRL+V to validate & reload."
+			m.errorMessage = i18n.T("File saved successfully. Press CTRL+V to validate & reload.")
 		}
 		return m, nil
 
 	case validationResultMsg:
 		m.loading = false
 		if msg.err != nil {
-			m.errorMessage = "Validation Error: " + msg.err.Error()
+			m.errorMessage = i18n.T("Validation Error: ") + msg.err.Error()
 		} else {
-			m.errorMessage = "Config Validated & Reloaded!"
+			m.errorMessage = i18n.T("Config Validated & Reloaded!")
 		}
 		m.valOutput = msg.output
 		return m, nil
@@ -230,7 +231,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.isDirty = false
 					m.errorMessage = ""
 					m.valOutput = ""
-					m.textArea.SetValue("Loading...")
+					m.textArea.SetValue(i18n.T("Loading..."))
 					m.textArea.Focus()
 					m.loading = true
 					return m, readConfig(m.engine, selected.ConfPath)
@@ -254,32 +255,32 @@ func (m Model) View() string {
 	var content string
 
 	headerStyle := lipgloss.NewStyle().Foreground(theme.Current.Primary).Bold(true)
-	breadcrumbs := fmt.Sprintf("Proxy Type: %s", m.proxyType)
+	breadcrumbs := i18n.Tf("Proxy Type: %s", m.proxyType)
 	if m.proxyType == "" {
-		breadcrumbs = "Detecting proxy..."
+		breadcrumbs = i18n.T("Detecting proxy...")
 	}
-	
+
 	if m.errorMessage != "" {
 		breadcrumbs += lipgloss.NewStyle().Foreground(lipgloss.Color("#ff0000")).Render("   " + m.errorMessage)
 	}
 
 	content = lipgloss.JoinVertical(lipgloss.Left,
-		components.Title("REVERSE PROXY MANAGER"),
+		components.Title(i18n.T("REVERSE PROXY MANAGER")),
 		headerStyle.Render(breadcrumbs)+"\n",
 	)
 
 	switch m.state {
 	case StateEditing:
-		status := " [Saved]"
+		status := i18n.T(" [Saved]")
 		if m.isDirty {
-			status = " [Unsaved]"
+			status = i18n.T(" [Unsaved]")
 		}
-		editorHeader := lipgloss.NewStyle().Foreground(theme.Current.Accent).Render(fmt.Sprintf("Editing: %s %s", m.editingFile, status))
-		controls := lipgloss.NewStyle().Foreground(theme.Current.Dim).Render("\nControls: [ESC] Back  [CTRL+S] Save  [CTRL+V] Validate & Reload")
-		
+		editorHeader := lipgloss.NewStyle().Foreground(theme.Current.Accent).Render(i18n.Tf("Editing: %s %s", m.editingFile, status))
+		controls := lipgloss.NewStyle().Foreground(theme.Current.Dim).Render("\n" + i18n.T("Controls: [ESC] Back  [CTRL+S] Save  [CTRL+V] Validate & Reload"))
+
 		valView := ""
 		if m.valOutput != "" {
-			valView = lipgloss.NewStyle().Foreground(theme.Current.Warning).Render("\nLive Output:\n" + m.valOutput)
+			valView = lipgloss.NewStyle().Foreground(theme.Current.Warning).Render("\n" + i18n.T("Live Output:\n") + m.valOutput)
 		}
 
 		content = lipgloss.JoinVertical(lipgloss.Left,
@@ -293,19 +294,19 @@ func (m Model) View() string {
 
 	case StateBrowsing:
 		if m.loading {
-			content = lipgloss.JoinVertical(lipgloss.Left, content, "Loading...")
+			content = lipgloss.JoinVertical(lipgloss.Left, content, i18n.T("Loading..."))
 		} else if len(m.sites) == 0 {
-			content = lipgloss.JoinVertical(lipgloss.Left, content, "No sites found.")
+			content = lipgloss.JoinVertical(lipgloss.Left, content, i18n.T("No sites found."))
 		} else {
 			colName := 30
 			colTarget := 20
 			colSSL := 15
-			
-			headerRow := fmt.Sprintf("  %-*s %-*s %-*s", 
-				colName, "Site Name", 
-				colTarget, "Target", 
-				colSSL, "SSL Status")
-				
+
+			headerRow := fmt.Sprintf("  %-*s %-*s %-*s",
+				colName, i18n.T("Site Name"),
+				colTarget, i18n.T("Target"),
+				colSSL, i18n.T("SSL Status"))
+
 			items := lipgloss.NewStyle().Foreground(theme.Current.Dim).Bold(true).Render(headerRow) + "\n"
 
 			start := 0
@@ -326,7 +327,7 @@ func (m Model) View() string {
 				site := m.sites[i]
 				cursor := "  "
 				style := lipgloss.NewStyle().Foreground(theme.Current.Text)
-				
+
 				if m.cursor == i {
 					cursor = "▶ "
 					style = lipgloss.NewStyle().Foreground(theme.Current.Primary).Bold(true)
@@ -354,7 +355,7 @@ func (m Model) View() string {
 			content = lipgloss.JoinVertical(lipgloss.Left, content, items)
 		}
 
-		controls := lipgloss.NewStyle().Foreground(theme.Current.Dim).Render("\nControls: [↑/↓] Navigate  [ENTER] Edit Config  [r] Refresh  [v] Validate & Reload All")
+		controls := lipgloss.NewStyle().Foreground(theme.Current.Dim).Render("\n" + i18n.T("Controls: [↑/↓] Navigate  [ENTER] Edit Config  [r] Refresh  [v] Validate & Reload All"))
 		content = lipgloss.JoinVertical(lipgloss.Left, content, controls)
 	}
 
@@ -362,4 +363,4 @@ func (m Model) View() string {
 }
 
 func (m Model) Title() string { return "Proxy" }
-func (m Model) Icon() string { return "🌐" }
+func (m Model) Icon() string  { return "🌐" }

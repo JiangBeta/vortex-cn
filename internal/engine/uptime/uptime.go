@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"main/internal/i18n"
 )
 
 type CheckType string
@@ -53,7 +55,7 @@ func AddTarget(t *MonitorTarget) {
 	}
 	t.Status = "pending"
 	Targets = append(Targets, t)
-	
+
 	go runCheck(t)
 	go startMonitor(t)
 }
@@ -99,9 +101,9 @@ func runCheck(t *MonitorTarget) {
 
 	durationMs := float64(time.Since(start).Milliseconds())
 	t.TotalChecks++
-	
+
 	oldStatus := t.Status
-	
+
 	if !success {
 		t.FailedChecks++
 		t.Status = "down"
@@ -115,10 +117,10 @@ func runCheck(t *MonitorTarget) {
 		t.History = t.History[1:]
 	}
 
-	t.Uptime = (float64(t.TotalChecks - t.FailedChecks) / float64(t.TotalChecks)) * 100.0
+	t.Uptime = (float64(t.TotalChecks-t.FailedChecks) / float64(t.TotalChecks)) * 100.0
 
 	if oldStatus != "pending" && oldStatus != "" && oldStatus != t.Status {
-		msg := fmt.Sprintf("Alert: Target %s is now %s. Details: %v", t.Name, t.Status, err)
+		msg := i18n.Tf("Alert: Target %s is now %s. Details: %v", t.Name, t.Status, err)
 		triggerWebhooks(t, msg)
 		select {
 		case EventChannel <- msg:

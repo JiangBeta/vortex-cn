@@ -9,6 +9,7 @@ import (
 
 	"main/internal/components"
 	auditengine "main/internal/engine/audit"
+	"main/internal/i18n"
 	"main/internal/pages"
 	"main/internal/theme"
 )
@@ -22,7 +23,7 @@ type Model struct {
 
 func New() Model {
 	ti := textinput.New()
-	ti.Placeholder = "Search logs..."
+	ti.Placeholder = i18n.T("Search logs...")
 	ti.CharLimit = 156
 	ti.Width = 50
 
@@ -69,7 +70,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.searchInput.Focus()
 			return m, textinput.Blink
 		}
-		
+
 	case pages.LogActivityMsg:
 		// Reload logs
 		if m.searchInput.Value() == "" {
@@ -87,33 +88,33 @@ func (m Model) IsInputActive() bool {
 }
 
 func (m Model) View() string {
-	header := "Press '/' to search, 'Esc' or 'Enter' to exit search mode.\n\n"
+	header := i18n.T("Press '/' to search, 'Esc' or 'Enter' to exit search mode.\n\n")
 	header += m.searchInput.View() + "\n\n"
 
 	var list string
 	if len(m.logs) == 0 {
-		list = "No logs found."
+		list = i18n.T("No logs found.")
 	} else {
 		for i, l := range m.logs {
 			if i < m.cursor-5 || i > m.cursor+15 {
 				continue // simple pagination/window
 			}
-			
+
 			cursor := "  "
 			style := lipgloss.NewStyle().Foreground(theme.Current.Text)
-			
+
 			if m.cursor == i {
 				cursor = "▶ "
 				style = lipgloss.NewStyle().Foreground(theme.Current.Primary).Bold(true)
 			}
-			
+
 			timeStr := lipgloss.NewStyle().Foreground(theme.Current.Dim).Render(l.Timestamp.Format("2006-01-02 15:04:05"))
 			list += fmt.Sprintf("%s %s  %s\n", cursor, timeStr, style.Render(l.Message))
 		}
 	}
 
 	content := lipgloss.JoinVertical(lipgloss.Left,
-		components.Title("AUDIT LOG"),
+		components.Title(i18n.T("AUDIT LOG")),
 		header,
 		list,
 	)
@@ -122,4 +123,4 @@ func (m Model) View() string {
 }
 
 func (m Model) Title() string { return "Audit Log" }
-func (m Model) Icon() string { return "📋" }
+func (m Model) Icon() string  { return "📋" }

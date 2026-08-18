@@ -11,6 +11,7 @@ import (
 
 	"main/internal/components"
 	appengine "main/internal/engine/apps"
+	"main/internal/i18n"
 	"main/internal/pages"
 	sshlib "main/internal/ssh"
 	"main/internal/theme"
@@ -25,27 +26,27 @@ const (
 )
 
 type Model struct {
-	apps          []appengine.App
-	filteredApps  []appengine.App
-	cursor        int
-	engine        *appengine.Engine
-	status        string
-	sortMode      SortMode
-	filterInput   string
-	isFiltering   bool
-	killConfirm   bool
+	apps         []appengine.App
+	filteredApps []appengine.App
+	cursor       int
+	engine       *appengine.Engine
+	status       string
+	sortMode     SortMode
+	filterInput  string
+	isFiltering  bool
+	killConfirm  bool
 }
 
 func New() Model {
 	return Model{
-		apps:          nil,
-		filteredApps:  nil,
-		cursor:        0,
-		status:        "Connecting to Process Engine...",
-		sortMode:      SortCPU,
-		filterInput:   "",
-		isFiltering:   false,
-		killConfirm:   false,
+		apps:         nil,
+		filteredApps: nil,
+		cursor:       0,
+		status:       i18n.T("Connecting to Process Engine..."),
+		sortMode:     SortCPU,
+		filterInput:  "",
+		isFiltering:  false,
+		killConfirm:  false,
 	}
 }
 
@@ -98,7 +99,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case appsLoadedMsg:
 		m.apps = msg
 		m.applyFilterAndSort()
-		m.status = fmt.Sprintf("Monitoring %d processes.", len(m.filteredApps))
+		m.status = i18n.Tf("Monitoring %d processes.", len(m.filteredApps))
 		if m.cursor >= len(m.filteredApps) {
 			m.cursor = 0
 		}
@@ -114,7 +115,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						pid := m.filteredApps[m.cursor].PID
 						m.engine.KillProcess(pid)
 						return tea.Batch(fetchApps(m.engine), func() tea.Msg {
-							return pages.LogActivityMsg{Message: "Force killed process PID " + pid}
+							return pages.LogActivityMsg{Message: i18n.Tf("Force killed process PID %s", pid)}
 						})()
 					}
 				}
@@ -132,13 +133,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if len(m.filterInput) > 0 {
 					m.filterInput = m.filterInput[:len(m.filterInput)-1]
 					m.applyFilterAndSort()
-					if m.cursor >= len(m.filteredApps) { m.cursor = 0 }
+					if m.cursor >= len(m.filteredApps) {
+						m.cursor = 0
+					}
 				}
 			default:
 				if len(msg.String()) == 1 {
 					m.filterInput += msg.String()
 					m.applyFilterAndSort()
-					if m.cursor >= len(m.filteredApps) { m.cursor = 0 }
+					if m.cursor >= len(m.filteredApps) {
+						m.cursor = 0
+					}
 				}
 			}
 			return m, nil
@@ -159,7 +164,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					pid := m.filteredApps[m.cursor].PID
 					m.engine.StopProcess(pid)
 					return tea.Batch(fetchApps(m.engine), func() tea.Msg {
-						return pages.LogActivityMsg{Message: "Stopped process PID " + pid}
+						return pages.LogActivityMsg{Message: i18n.Tf("Stopped process PID %s", pid)}
 					})()
 				}
 			}
@@ -168,7 +173,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.killConfirm = true
 			}
 		case "r", "R":
-			m.status = "Refreshing processes..."
+			m.status = i18n.T("Refreshing processes...")
 			return m, fetchApps(m.engine)
 		case "c":
 			m.sortMode = SortCPU
@@ -185,7 +190,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case sshlib.ConnectedMsg:
 		m.engine = appengine.NewEngine(msg.Client)
-		m.status = "Scanning ports and runtimes..."
+		m.status = i18n.T("Scanning ports and runtimes...")
 		return m, fetchApps(m.engine)
 	}
 	return m, nil
@@ -196,45 +201,55 @@ func (m Model) View() string {
 	if m.apps == nil {
 		items = lipgloss.NewStyle().Foreground(theme.Current.Dim).Render(m.status)
 	} else if len(m.filteredApps) == 0 {
-		items = "No processes match the current filter."
+		items = i18n.T("No processes match the current filter.")
 	} else {
 		header := lipgloss.NewStyle().Foreground(theme.Current.Dim).Bold(true).Render(
-			fmt.Sprintf("  %-8s %-10s %-8s %-8s %-12s %-12s %s\n", "PID", "USER", "CPU%", "MEM%", "RAM", "TYPE", "COMMAND"),
+			fmt.Sprintf("  %-8s %s %-8s %-8s %-12s %s %s\n", "PID", components.PadRight(i18n.T("USER"), 10), "CPU%", "MEM%", "RAM", components.PadRight(i18n.T("TYPE"), 12), i18n.T("COMMAND")),
 		)
 		items += header
 
 		for i, app := range m.filteredApps {
 			cursor := "  "
-			
+
 			rowColor := theme.Current.Text
 			if app.User == "root" {
 				rowColor = lipgloss.Color("203") // distinct dim red for root processes
 			}
-			
+
 			style := lipgloss.NewStyle().Foreground(rowColor)
-			
+
 			cpuColor := theme.Current.Success
-			if app.CPU > 50 { cpuColor = theme.Current.Warning }
-			if app.CPU > 80 { cpuColor = theme.Current.Error }
-			
+			if app.CPU > 50 {
+				cpuColor = theme.Current.Warning
+			}
+			if app.CPU > 80 {
+				cpuColor = theme.Current.Error
+			}
+
 			memColor := theme.Current.Success
-			if app.Mem > 50 { memColor = theme.Current.Warning }
-			if app.Mem > 80 { memColor = theme.Current.Error }
+			if app.Mem > 50 {
+				memColor = theme.Current.Warning
+			}
+			if app.Mem > 80 {
+				memColor = theme.Current.Error
+			}
 
 			cpuStr := lipgloss.NewStyle().Foreground(cpuColor).Render(fmt.Sprintf("%-8.1f", app.CPU))
 			memStr := lipgloss.NewStyle().Foreground(memColor).Render(fmt.Sprintf("%-8.1f", app.Mem))
-			
+
 			cmdStr := app.Name
 			if len(cmdStr) > 50 {
 				cmdStr = cmdStr[:47] + "..."
 			}
-			
+
 			userStr := app.User
-			if len(userStr) > 10 { userStr = userStr[:10] }
+			if len(userStr) > 10 {
+				userStr = userStr[:10]
+			}
 			typeStr := "[" + app.Runtime + "]"
 
 			ramStr := app.RAM
-			
+
 			var row string
 			if m.cursor == i {
 				cursor = "▶ "
@@ -242,7 +257,7 @@ func (m Model) View() string {
 				row = fmt.Sprintf("%-8s %-10s %-8.1f %-8.1f %-12s %-12s %s", app.PID, userStr, app.CPU, app.Mem, ramStr, typeStr, cmdStr)
 				row = style.Render(row)
 			} else {
-				row = fmt.Sprintf("%-8s %-10s %s %s %-12s %-12s %s", 
+				row = fmt.Sprintf("%-8s %-10s %s %s %-12s %-12s %s",
 					lipgloss.NewStyle().Foreground(theme.Current.Dim).Render(app.PID),
 					lipgloss.NewStyle().Foreground(rowColor).Render(userStr),
 					cpuStr,
@@ -252,39 +267,47 @@ func (m Model) View() string {
 					lipgloss.NewStyle().Foreground(theme.Current.Text).Render(cmdStr),
 				)
 			}
-			
+
 			items += cursor + row + "\n"
 		}
 	}
 
 	filterUI := ""
 	if m.isFiltering || m.filterInput != "" {
-		filterUI = lipgloss.NewStyle().Foreground(theme.Current.Primary).Render("Filter: ") + m.filterInput
-		if m.isFiltering { filterUI += "█" }
+		filterUI = lipgloss.NewStyle().Foreground(theme.Current.Primary).Render(i18n.T("Filter: ")) + m.filterInput
+		if m.isFiltering {
+			filterUI += "█"
+		}
 		filterUI += "\n\n"
 	}
 
 	confirmUI := ""
 	if m.killConfirm {
 		appName := m.filteredApps[m.cursor].Name
-		if len(appName) > 20 { appName = appName[:20] + "..." }
+		if len(appName) > 20 {
+			appName = appName[:20] + "..."
+		}
 		confirmUI = lipgloss.NewStyle().Foreground(theme.Current.Error).Bold(true).Render(
-			fmt.Sprintf("\n[!] Force kill %s (PID %s)? (y/N)", appName, m.filteredApps[m.cursor].PID),
+			i18n.Tf("[!] Force kill %s (PID %s)? (y/N)", appName, m.filteredApps[m.cursor].PID),
 		)
 	}
 
 	sortName := "CPU"
-	if m.sortMode == SortMem { sortName = "MEM" }
-	if m.sortMode == SortPID { sortName = "PID" }
+	if m.sortMode == SortMem {
+		sortName = "MEM"
+	}
+	if m.sortMode == SortPID {
+		sortName = "PID"
+	}
 
 	title := ""
 	if m.apps != nil {
-		title = fmt.Sprintf("PROCESS MANAGER — Top %d (by %s ▼)", len(m.filteredApps), sortName)
+		title = i18n.Tf("PROCESS MANAGER — Top %d (by %s ▼)", len(m.filteredApps), sortName)
 	} else {
-		title = "PROCESS MANAGER"
+		title = i18n.T("PROCESS MANAGER")
 	}
 
-	controls := lipgloss.NewStyle().Foreground(theme.Current.Dim).Render("\nControls: [c] Sort CPU  [m] Sort MEM  [/] Filter  [S] Stop  [Shift+K] Force Kill")
+	controls := lipgloss.NewStyle().Foreground(theme.Current.Dim).Render("\n" + i18n.T("Controls: [c] Sort CPU  [m] Sort MEM  [/] Filter  [S] Stop  [Shift+K] Force Kill"))
 
 	content := lipgloss.JoinVertical(lipgloss.Left,
 		components.Title(title),
@@ -298,4 +321,4 @@ func (m Model) View() string {
 }
 
 func (m Model) Title() string { return "Processes" }
-func (m Model) Icon() string { return "⚙" }
+func (m Model) Icon() string  { return "⚙" }

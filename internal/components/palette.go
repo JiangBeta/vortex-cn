@@ -6,6 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"main/internal/i18n"
 	"main/internal/theme"
 )
 
@@ -108,7 +109,7 @@ func (p *Palette) View() string {
 	header := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(theme.Current.Primary).
-		Render("🔍 COMMAND PALETTE")
+		Render("🔍 " + i18n.T("COMMAND PALETTE"))
 
 	inputBox := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
@@ -125,7 +126,7 @@ func (p *Palette) View() string {
 		cursor := "  "
 		style := lipgloss.NewStyle().Foreground(theme.Current.Text)
 		descStyle := lipgloss.NewStyle().Foreground(theme.Current.Dim)
-		
+
 		if i == p.cursor {
 			cursor = "▶ "
 			style = lipgloss.NewStyle().Foreground(theme.Current.Primary).Bold(true)
@@ -135,7 +136,7 @@ func (p *Palette) View() string {
 	}
 
 	if len(p.filtered) == 0 {
-		list = "  No commands found."
+		list = "  " + i18n.T("No commands found.")
 	}
 
 	box := lipgloss.NewStyle().

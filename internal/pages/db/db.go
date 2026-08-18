@@ -9,6 +9,7 @@ import (
 
 	"main/internal/components"
 	dbengine "main/internal/engine/db"
+	"main/internal/i18n"
 	"main/internal/pages"
 	"main/internal/theme"
 )
@@ -17,9 +18,9 @@ type fetchedStatsMsg dbengine.DatabaseStats
 type queryResultMsg string
 
 type Model struct {
-	engine      *dbengine.Engine
-	stats       dbengine.DatabaseStats
-	isFetching  bool
+	engine     *dbengine.Engine
+	stats      dbengine.DatabaseStats
+	isFetching bool
 
 	// Query Console state
 	queryInput  string
@@ -46,7 +47,7 @@ func New() Model {
 func (m Model) Init() tea.Cmd { return nil }
 
 func (m Model) Title() string { return "Databases" }
-func (m Model) Icon() string { return "🗄" }
+func (m Model) Icon() string  { return "🗄" }
 
 func (m Model) IsInputActive() bool {
 	return m.inputActive
@@ -139,7 +140,7 @@ func (m Model) View() string {
 	text := theme.Current.Text
 	dim := theme.Current.Dim
 
-	header := fmt.Sprintf("Databases Managed: 3 | Last Refresh: Just now")
+	header := i18n.T("Databases Managed: 3 | Last Refresh: Just now")
 
 	dbs := []struct {
 		Name   string
@@ -170,15 +171,15 @@ func (m Model) View() string {
 
 		statusStr := lipgloss.NewStyle().Foreground(statusColor).Render(fmt.Sprintf("[%s]", db.Status))
 
-		details := fmt.Sprintf("Conns: %s | Size: %s", db.Conns, db.Size)
+		details := i18n.Tf("Conns: %s | Size: %s", db.Conns, db.Size)
 		list += fmt.Sprintf("%s %s %s - %s\n", cursor, statusStr, style.Render(db.Name), lipgloss.NewStyle().Foreground(dim).Render(details))
 	}
 
-	controls := lipgloss.NewStyle().Foreground(dim).Render("\nControls: [up/down] Select DB  [Enter] Open Query Console  [R] Refresh")
+	controls := lipgloss.NewStyle().Foreground(dim).Render("\n" + i18n.T("Controls: [up/down] Select DB  [Enter] Open Query Console  [R] Refresh"))
 
 	consoleView := ""
 	if m.inputActive {
-		consoleView = "\n\n" + lipgloss.NewStyle().Foreground(accent).Bold(true).Render("Query Console (Type and press Enter): ") + "\n" + m.queryInput + "█"
+		consoleView = "\n\n" + lipgloss.NewStyle().Foreground(accent).Bold(true).Render(i18n.T("Query Console (Type and press Enter): ")) + "\n" + m.queryInput + "█"
 	}
 
 	resView := ""
@@ -186,13 +187,13 @@ func (m Model) View() string {
 		// Just a bit of formatting
 		formattedRes := strings.TrimSpace(m.queryResult)
 		if len(formattedRes) > 500 {
-			formattedRes = formattedRes[:500] + "\n... (truncated)"
+			formattedRes = formattedRes[:500] + "\n" + i18n.T("... (truncated)")
 		}
-		resView = "\n\n" + lipgloss.NewStyle().Foreground(primary).Bold(true).Render("Query Result:") + "\n" + lipgloss.NewStyle().Foreground(text).Render(formattedRes)
+		resView = "\n\n" + lipgloss.NewStyle().Foreground(primary).Bold(true).Render(i18n.T("Query Result:")) + "\n" + lipgloss.NewStyle().Foreground(text).Render(formattedRes)
 	}
 
 	content := lipgloss.JoinVertical(lipgloss.Left,
-		components.Title("DATABASE MANAGER v1.9"),
+		components.Title(i18n.T("DATABASE MANAGER v1.9")),
 		header,
 		"\n"+list,
 		controls,

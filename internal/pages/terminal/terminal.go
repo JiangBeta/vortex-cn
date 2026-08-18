@@ -4,6 +4,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"main/internal/i18n"
 	sshlib "main/internal/ssh"
 	"main/internal/theme"
 )
@@ -16,7 +17,7 @@ type Model struct {
 }
 
 func New() Model {
-	return Model{host: "Not Connected"}
+	return Model{host: i18n.T("Not Connected")}
 }
 
 func (m Model) Init() tea.Cmd { return nil }
@@ -48,13 +49,13 @@ func (m Model) View() string {
 
 	return card.Render(
 		lipgloss.JoinVertical(lipgloss.Left,
-			titleCard.Render("SECURE SHELL (SSH)"),
-			"Target:   "+lipgloss.NewStyle().Foreground(theme.Current.Primary).Render(m.host),
+			titleCard.Render(i18n.T("SECURE SHELL (SSH)")),
+			i18n.T("Target:   ")+lipgloss.NewStyle().Foreground(theme.Current.Primary).Render(m.host),
 			"",
-			lipgloss.NewStyle().Foreground(theme.Current.Dim).Render("[ Press 'ENTER' to initiate Native SSH Session ]"),
+			lipgloss.NewStyle().Foreground(theme.Current.Dim).Render(i18n.T("[ Press 'ENTER' to initiate Native SSH Session ]")),
 		),
 	)
 }
 
 func (m Model) Title() string { return "SSH" }
-func (m Model) Icon() string { return "🔑" }
+func (m Model) Icon() string  { return "🔑" }

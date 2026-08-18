@@ -6,6 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"main/internal/i18n"
 )
 
 type Startup struct {
@@ -22,12 +23,12 @@ func NewStartup() Startup {
 		Frame:     0,
 		MaxFrames: 45, // approx 2.25 seconds
 		Steps: []string{
-			"✓ Loading configuration",
-			"✓ Connecting to servers",
-			"✓ Loading themes",
-			"✓ Detecting operating system",
-			"✓ Initializing dashboard",
-			"✓ Establishing SSH sessions",
+			i18n.T("✓ Loading configuration"),
+			i18n.T("✓ Connecting to servers"),
+			i18n.T("✓ Loading themes"),
+			i18n.T("✓ Detecting operating system"),
+			i18n.T("✓ Initializing dashboard"),
+			i18n.T("✓ Establishing SSH sessions"),
 		},
 		CurrentStep: 0,
 	}
@@ -61,7 +62,7 @@ func (s *Startup) View(width, height int) string {
 	cyan := lipgloss.Color("86")
 	blue := lipgloss.Color("33")
 	green := lipgloss.Color("46")
-	
+
 	// Fade effect logic
 	logoColor := cyan
 	if s.Frame < 10 {
@@ -84,7 +85,7 @@ func (s *Startup) View(width, height int) string {
 	renderedLogo := logoStyle.Render(logo)
 	renderedTitle := titleStyle.Render("V O R T E X")
 	divider := dimStyle.Render("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-	initText := lipgloss.NewStyle().Foreground(lipgloss.Color("250")).Render("Initializing Mission Control...")
+	initText := lipgloss.NewStyle().Foreground(lipgloss.Color("250")).Render(i18n.T("Initializing Mission Control..."))
 
 	var steps []string
 	for i := 0; i < s.CurrentStep; i++ {

@@ -26,12 +26,13 @@ type GeneralConfig struct {
 }
 
 type AppearanceConfig struct {
-	Theme             string `yaml:"theme"` // Tokyo Night, Catppuccin, etc.
-	Wallpaper         string `yaml:"wallpaper"`
-	WallpaperOpacity  int    `yaml:"wallpaper_opacity"`
+	Theme              string `yaml:"theme"` // Tokyo Night, Catppuccin, etc.
+	Wallpaper          string `yaml:"wallpaper"`
+	WallpaperOpacity   int    `yaml:"wallpaper_opacity"`
 	AnimationIntensity string `yaml:"animation_intensity"` // Full, Reduced, Off
-	GraphStyle        string `yaml:"graph_style"` // Sparkline, Bar, Plain
-	BorderStyle       string `yaml:"border_style"`
+	GraphStyle         string `yaml:"graph_style"`         // Sparkline, Bar, Plain
+	BorderStyle        string `yaml:"border_style"`
+	Language           string `yaml:"language"` // en, zh
 }
 
 type SSHConfig struct {
@@ -99,18 +100,18 @@ type UptimeMonitorConfig struct {
 }
 
 type Config struct {
-	Servers       []ServerConfig          `yaml:"servers"`
-	General       GeneralConfig           `yaml:"general"`
-	Appearance    AppearanceConfig        `yaml:"appearance"`
-	SSH           SSHConfig               `yaml:"ssh"`
-	Monitoring    MonitoringConfig        `yaml:"monitoring"`
-	Docker        DockerConfig            `yaml:"docker"`
-	Logs          LogsConfig              `yaml:"logs"`
-	Security      SecurityConfig          `yaml:"security"`
-	Notifications NotificationsConfig     `yaml:"notifications"`
-	Backups       BackupsConfig           `yaml:"backups"`
-	Keybinds      KeybindsConfig          `yaml:"keybinds"`
-	UptimeTargets []UptimeMonitorConfig   `yaml:"uptime_targets"`
+	Servers       []ServerConfig        `yaml:"servers"`
+	General       GeneralConfig         `yaml:"general"`
+	Appearance    AppearanceConfig      `yaml:"appearance"`
+	SSH           SSHConfig             `yaml:"ssh"`
+	Monitoring    MonitoringConfig      `yaml:"monitoring"`
+	Docker        DockerConfig          `yaml:"docker"`
+	Logs          LogsConfig            `yaml:"logs"`
+	Security      SecurityConfig        `yaml:"security"`
+	Notifications NotificationsConfig   `yaml:"notifications"`
+	Backups       BackupsConfig         `yaml:"backups"`
+	Keybinds      KeybindsConfig        `yaml:"keybinds"`
+	UptimeTargets []UptimeMonitorConfig `yaml:"uptime_targets"`
 }
 
 func GetDefaultConfig() Config {
@@ -132,6 +133,7 @@ func GetDefaultConfig() Config {
 			AnimationIntensity: "Full",
 			GraphStyle:         "Sparkline",
 			BorderStyle:        "rounded",
+			Language:           "zh",
 		},
 		SSH: SSHConfig{
 			Timeout:    10,
@@ -181,26 +183,26 @@ func GetDefaultConfig() Config {
 			Retention: 7,
 		},
 		Keybinds: KeybindsConfig{
-			"Dashboard": "g",
-			"Servers": "esc", // default back
-			"Docker": "d",
-			"Processes": "p",
-			"Services": "s",
-			"Logs": "l",
-			"Files": "f",
-			"Security": "w",
-			"Cron": "x",
-			"Certs": "c",
-			"Users": "u",
-			"Alerts": "a",
-			"Audit": "v",
-			"Database": "b",
-			"Proxy": "r",
-			"Secrets": "e",
-			"Deploy": "y",
-			"Snapshots": "h",
-			"Uptime": "m",
-			"Backup": "k",
+			"Dashboard":       "g",
+			"Servers":         "esc", // default back
+			"Docker":          "d",
+			"Processes":       "p",
+			"Services":        "s",
+			"Logs":            "l",
+			"Files":           "f",
+			"Security":        "w",
+			"Cron":            "x",
+			"Certs":           "c",
+			"Users":           "u",
+			"Alerts":          "a",
+			"Audit":           "v",
+			"Database":        "b",
+			"Proxy":           "r",
+			"Secrets":         "e",
+			"Deploy":          "y",
+			"Snapshots":       "h",
+			"Uptime":          "m",
+			"Backup":          "k",
 			"Command Palette": "ctrl+p",
 		},
 		UptimeTargets: []UptimeMonitorConfig{
@@ -240,7 +242,7 @@ func SaveConfig(cfg Config) error {
 		return err
 	}
 	os.MkdirAll(filepath.Dir(configPath), 0755)
-	
+
 	data, err := yaml.Marshal(&cfg)
 	if err != nil {
 		return err
@@ -258,9 +260,9 @@ func LoadConfig() (Config, error) {
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		home, _ := os.UserHomeDir()
 		oldPath := filepath.Join(home, ".vortex", "config.json")
-		
+
 		def := GetDefaultConfig()
-		
+
 		if data, err := os.ReadFile(oldPath); err == nil {
 			// Extract servers from old json
 			type oldCfg struct {
@@ -271,7 +273,7 @@ func LoadConfig() (Config, error) {
 				def.Servers = o.Servers
 			}
 		}
-		
+
 		// Write the new YAML file
 		SaveConfig(def)
 		return def, nil
@@ -284,7 +286,7 @@ func LoadConfig() (Config, error) {
 	}
 
 	cfg := GetDefaultConfig() // Load defaults first so missing keys fallback gracefully
-	
+
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		// Log warning but continue
 		fmt.Printf("Warning: Config file contains invalid YAML or keys. Using fallback defaults for invalid entries. Error: %v\n", err)

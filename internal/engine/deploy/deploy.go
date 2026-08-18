@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"main/internal/i18n"
 	sshlib "main/internal/ssh"
 )
 
@@ -27,67 +28,67 @@ func (e *Engine) Deploy(appDir string, buildCmd string, restartCmd string, healt
 		defer close(outChan)
 
 		runStep := func(stepName, cmd string) error {
-			outChan <- fmt.Sprintf("▶ [%s] Executing: %s", stepName, cmd)
+			outChan <- i18n.Tf("▶ [%s] Executing: %s", stepName, cmd)
 			out, err := e.client.Run(cmd)
 			if err != nil {
-				outChan <- fmt.Sprintf("✖ [%s] Failed: %v\nOutput: %s", stepName, err, out)
-				e.LogAudit(fmt.Sprintf("Pipeline failed at %s. Error: %v", stepName, err))
+				outChan <- i18n.Tf("✖ [%s] Failed: %v\nOutput: %s", stepName, err, out)
+				e.LogAudit(i18n.Tf("Pipeline failed at %s. Error: %v", stepName, err))
 				return err
 			}
 			if strings.TrimSpace(out) != "" {
-				outChan <- fmt.Sprintf("✔ [%s] Success.\n%s", stepName, out)
+				outChan <- i18n.Tf("✔ [%s] Success.\n%s", stepName, out)
 			} else {
-				outChan <- fmt.Sprintf("✔ [%s] Success.", stepName)
+				outChan <- i18n.Tf("✔ [%s] Success.", stepName)
 			}
 			return nil
 		}
 
-		e.LogAudit(fmt.Sprintf("Starting deployment pipeline in %s", appDir))
-		outChan <- "▶ Starting Deployment Pipeline"
+		e.LogAudit(i18n.Tf("Starting deployment pipeline in %s", appDir))
+		outChan <- i18n.T("▶ Starting Deployment Pipeline")
 
 		// 1. Git Pull
-		if err := runStep("Git Pull", fmt.Sprintf("cd %s && git pull", appDir)); err != nil {
+		if err := runStep(i18n.T("Git Pull"), fmt.Sprintf("cd %s && git pull", appDir)); err != nil {
 			return
 		}
 
 		// 2. Build
 		if buildCmd != "" {
-			if err := runStep("Build", fmt.Sprintf("cd %s && %s", appDir, buildCmd)); err != nil {
+			if err := runStep(i18n.T("Build"), fmt.Sprintf("cd %s && %s", appDir, buildCmd)); err != nil {
 				return
 			}
 		}
 
 		// 3. Restart
 		if restartCmd != "" {
-			if err := runStep("Restart", fmt.Sprintf("cd %s && %s", appDir, restartCmd)); err != nil {
+			if err := runStep(i18n.T("Restart"), fmt.Sprintf("cd %s && %s", appDir, restartCmd)); err != nil {
 				return
 			}
 		}
 
 		// 4. Health Check
 		if healthUrl != "" {
-			outChan <- fmt.Sprintf("▶ [Health] Checking URL: %s", healthUrl)
+			outChan <- i18n.Tf("▶ [Health] Checking URL: %s", healthUrl)
 			// check with curl
 			healthCmd := fmt.Sprintf("curl -s -o /dev/null -w \"%%{http_code}\" %s", healthUrl)
 			out, err := e.client.Run(healthCmd)
 			if err != nil {
-				outChan <- fmt.Sprintf("✖ [Health] Failed to run curl: %v", err)
-				e.LogAudit("Deployment failed health check (curl error).")
+				outChan <- i18n.Tf("✖ [Health] Failed to run curl: %v", err)
+				e.LogAudit(i18n.T("Deployment failed health check (curl error)."))
 				return
 			}
 			out = strings.TrimSpace(out)
 			// accept 200-299 status codes or 301/302 redirects
 			if strings.HasPrefix(out, "2") || strings.HasPrefix(out, "3") {
-				outChan <- fmt.Sprintf("✔ [Health] Status %s. Health check passed.", out)
+				outChan <- i18n.Tf("✔ [Health] Status %s. Health check passed.", out)
 			} else {
-				outChan <- fmt.Sprintf("✖ [Health] Status %s. Health check FAILED.", out)
-				e.LogAudit(fmt.Sprintf("Deployment failed health check with status %s.", out))
+				outChan <- i18n.Tf("✖ [Health] Status %s. Health check FAILED.", out)
+				e.LogAudit(i18n.Tf("Deployment failed health check with status %s.", out))
 				return
 			}
 		}
 
-		e.LogAudit(fmt.Sprintf("Deployment completed successfully in %s", appDir))
-		outChan <- "✔ Deployment Pipeline Completed Successfully"
+		e.LogAudit(i18n.Tf("Deployment completed successfully in %s", appDir))
+		outChan <- i18n.T("✔ Deployment Pipeline Completed Successfully")
 	}()
 
 	return outChan, nil
@@ -106,23 +107,23 @@ func (e *Engine) StartWebhookListener(port string, route string, appDir string, 
 	mux := http.NewServeMux()
 	mux.HandleFunc(route, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, i18n.T("Method not allowed"), http.StatusMethodNotAllowed)
 			return
 		}
 
 		// Read body to verify webhook payload if needed (ignored for now)
 		io.ReadAll(r.Body)
 		r.Body.Close()
-		
-		e.LogAudit("Webhook received. Triggering deployment.")
-		
+
+		e.LogAudit(i18n.T("Webhook received. Triggering deployment."))
+
 		// Run deployment in background
 		outChan, err := e.Deploy(appDir, buildCmd, restartCmd, healthUrl)
 		if err != nil {
-			http.Error(w, "Failed to start deployment", http.StatusInternalServerError)
+			http.Error(w, i18n.T("Failed to start deployment"), http.StatusInternalServerError)
 			return
 		}
-		
+
 		go func() {
 			for out := range outChan {
 				_ = out // drain the channel so it doesn't block
@@ -130,21 +131,21 @@ func (e *Engine) StartWebhookListener(port string, route string, appDir string, 
 		}()
 
 		w.WriteHeader(http.StatusAccepted)
-		w.Write([]byte("Deployment triggered successfully."))
+		w.Write([]byte(i18n.T("Deployment triggered successfully.")))
 	})
 
 	server := &http.Server{
-		Addr:    ":" + port,
-		Handler: mux,
-		ReadTimeout: 10 * time.Second,
+		Addr:         ":" + port,
+		Handler:      mux,
+		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
 
 	go func() {
 		// Start the server in the background
-		e.LogAudit(fmt.Sprintf("Starting Webhook listener on port %s for route %s", port, route))
+		e.LogAudit(i18n.Tf("Starting Webhook listener on port %s for route %s", port, route))
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			e.LogAudit(fmt.Sprintf("Webhook listener failed: %v", err))
+			e.LogAudit(i18n.Tf("Webhook listener failed: %v", err))
 		}
 	}()
 

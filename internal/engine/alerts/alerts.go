@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"main/internal/config"
+	"main/internal/i18n"
 	"main/internal/stats"
 )
 
@@ -83,7 +84,7 @@ func (e *Engine) Save() error {
 
 func (e *Engine) AddWebhook(w Webhook) error {
 	w.ID = fmt.Sprintf("%d", time.Now().UnixNano())
-	w.LastError = "Never fired"
+	w.LastError = i18n.T("Never fired")
 	e.mu.Lock()
 	e.Webhooks = append(e.Webhooks, w)
 	e.mu.Unlock()
@@ -125,21 +126,21 @@ func (e *Engine) GetWebhooks() []Webhook {
 // CheckThresholds compares stats against config.yaml thresholds
 func (e *Engine) CheckThresholds(sys stats.SystemStats, cfg config.MonitoringConfig) {
 	if sys.CPUPercent >= float64(cfg.CPUCritical) {
-		e.TriggerAlert("CPU_CRITICAL", fmt.Sprintf("CPU usage is critical: %.2f%%", sys.CPUPercent))
+		e.TriggerAlert("CPU_CRITICAL", i18n.Tf("CPU usage is critical: %.2f%%", sys.CPUPercent))
 	} else if sys.CPUPercent >= float64(cfg.CPUWarning) {
-		e.TriggerAlert("CPU_WARNING", fmt.Sprintf("CPU usage is warning: %.2f%%", sys.CPUPercent))
+		e.TriggerAlert("CPU_WARNING", i18n.Tf("CPU usage is warning: %.2f%%", sys.CPUPercent))
 	}
 
 	if sys.RAMPercent >= float64(cfg.RAMCritical) {
-		e.TriggerAlert("RAM_CRITICAL", fmt.Sprintf("RAM usage is critical: %.2f%%", sys.RAMPercent))
+		e.TriggerAlert("RAM_CRITICAL", i18n.Tf("RAM usage is critical: %.2f%%", sys.RAMPercent))
 	} else if sys.RAMPercent >= float64(cfg.RAMWarning) {
-		e.TriggerAlert("RAM_WARNING", fmt.Sprintf("RAM usage is warning: %.2f%%", sys.RAMPercent))
+		e.TriggerAlert("RAM_WARNING", i18n.Tf("RAM usage is warning: %.2f%%", sys.RAMPercent))
 	}
 
 	if sys.DiskPercent >= float64(cfg.DiskCritical) {
-		e.TriggerAlert("DISK_CRITICAL", fmt.Sprintf("Disk usage is critical: %.2f%%", sys.DiskPercent))
+		e.TriggerAlert("DISK_CRITICAL", i18n.Tf("Disk usage is critical: %.2f%%", sys.DiskPercent))
 	} else if sys.DiskPercent >= float64(cfg.DiskWarning) {
-		e.TriggerAlert("DISK_WARNING", fmt.Sprintf("Disk usage is warning: %.2f%%", sys.DiskPercent))
+		e.TriggerAlert("DISK_WARNING", i18n.Tf("Disk usage is warning: %.2f%%", sys.DiskPercent))
 	}
 }
 
@@ -159,7 +160,7 @@ func (e *Engine) TriggerAlert(alertKey, message string) {
 			if !w.Enabled {
 				continue
 			}
-			
+
 			err := e.sendPayload(w, message)
 			e.mu.Lock()
 			for j, ew := range e.Webhooks {
@@ -168,7 +169,7 @@ func (e *Engine) TriggerAlert(alertKey, message string) {
 					if err != nil {
 						e.Webhooks[j].LastError = err.Error()
 					} else {
-						e.Webhooks[j].LastError = "Delivered successfully"
+						e.Webhooks[j].LastError = i18n.T("Delivered successfully")
 					}
 				}
 			}
@@ -183,7 +184,7 @@ func (e *Engine) sendPayload(w Webhook, message string) error {
 	var err error
 
 	if w.Type == Discord {
-		p := map[string]string{"content": "[Vortex Alert] " + message}
+		p := map[string]string{"content": i18n.T("[Vortex Alert] ") + message}
 		payload, err = json.Marshal(p)
 	} else if w.Type == Slack {
 		p := map[string]string{"text": "[Vortex Alert] " + message}

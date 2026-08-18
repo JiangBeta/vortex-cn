@@ -10,6 +10,7 @@ import (
 
 	"main/internal/components"
 	secretsengine "main/internal/engine/secrets"
+	"main/internal/i18n"
 	"main/internal/pages"
 	sshlib "main/internal/ssh"
 	"main/internal/theme"
@@ -198,9 +199,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case fileSaveMsg:
 		m.loading = false
 		if msg.err != nil {
-			m.errMessage = "Save Error: " + msg.err.Error()
+			m.errMessage = i18n.T("Save Error: ") + msg.err.Error()
 		} else {
-			m.errMessage = "Saved successfully."
+			m.errMessage = i18n.T("Saved successfully.")
 			// reset original states
 			for i := range m.vars {
 				m.vars[i].Original = m.vars[i].Value
@@ -212,9 +213,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case dbSyncMsg:
 		if msg.err != nil {
-			m.errMessage = "DB Sync Error: " + msg.err.Error()
+			m.errMessage = i18n.T("DB Sync Error: ") + msg.err.Error()
 		} else {
-			m.errMessage = "Successfully integrated with Database Manager."
+			m.errMessage = i18n.T("Successfully integrated with Database Manager.")
 		}
 		return m, nil
 
@@ -277,10 +278,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.vars[m.varCursor].IsDirty = (m.vars[m.varCursor].Value != m.vars[m.varCursor].Original)
 				m.state = StateViewingVars
 				m.textInput.Blur()
-				
+
 				// Return log message for audit, keeping plaintext secret out of the log
 				return m, func() tea.Msg {
-					return pages.LogActivityMsg{Message: fmt.Sprintf("Updated %s in %s", m.vars[m.varCursor].Key, m.activeFile)}
+					return pages.LogActivityMsg{Message: i18n.Tf("Updated %s in %s", m.vars[m.varCursor].Key, m.activeFile)}
 				}
 			default:
 				var cmd tea.Cmd
@@ -305,15 +306,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() string {
 	var b strings.Builder
 
-	b.WriteString(components.Title("SECRETS MANAGER") + "\n\n")
+	b.WriteString(components.Title(i18n.T("SECRETS MANAGER")) + "\n\n")
 
 	if m.loading {
-		b.WriteString(lipgloss.NewStyle().Foreground(theme.Current.Dim).Render("Loading...") + "\n")
+		b.WriteString(lipgloss.NewStyle().Foreground(theme.Current.Dim).Render(i18n.T("Loading...")) + "\n")
 		return lipgloss.NewStyle().Padding(1, 2).Render(b.String())
 	}
 
 	if m.errMessage != "" {
-		if strings.Contains(m.errMessage, "successfully") || strings.Contains(m.errMessage, "Successfully") {
+		if strings.Contains(m.errMessage, "成功") {
 			b.WriteString(lipgloss.NewStyle().Foreground(theme.Current.Success).Render(m.errMessage) + "\n\n")
 		} else {
 			b.WriteString(lipgloss.NewStyle().Foreground(theme.Current.Error).Render(m.errMessage) + "\n\n")
@@ -322,15 +323,15 @@ func (m Model) View() string {
 
 	switch m.state {
 	case StateBrowsing:
-		b.WriteString("Select a .env file:\n\n")
+		b.WriteString(i18n.T("Select a .env file:\n\n"))
 		if len(m.files) == 0 {
-			b.WriteString("No .env files found.")
+			b.WriteString(i18n.T("No .env files found."))
 		} else {
 			for i, f := range m.files {
 				cursor := "  "
 				if m.fileCursor == i {
 					cursor = "> "
-					b.WriteString(lipgloss.NewStyle().Foreground(theme.Current.Primary).Render(cursor + f) + "\n")
+					b.WriteString(lipgloss.NewStyle().Foreground(theme.Current.Primary).Render(cursor+f) + "\n")
 				} else {
 					b.WriteString(cursor + f + "\n")
 				}
@@ -338,10 +339,10 @@ func (m Model) View() string {
 		}
 
 	case StateViewingVars:
-		b.WriteString(fmt.Sprintf("Editing %s \n[s]ave  [d]b-sync  [esc]back  [enter]edit\n\n", m.activeFile))
+		b.WriteString(i18n.Tf("Editing %s \n[s]ave  [d]b-sync  [esc]back  [enter]edit\n\n", m.activeFile))
 		for i, v := range m.vars {
 			if !v.IsVar {
-				b.WriteString(lipgloss.NewStyle().Foreground(theme.Current.Dim).Render("  " + v.Raw) + "\n")
+				b.WriteString(lipgloss.NewStyle().Foreground(theme.Current.Dim).Render("  "+v.Raw) + "\n")
 				continue
 			}
 
@@ -352,7 +353,7 @@ func (m Model) View() string {
 
 			valDisplay := "********"
 			line := fmt.Sprintf("%s%s=%s", cursor, v.Key, valDisplay)
-			
+
 			if m.varCursor == i {
 				b.WriteString(lipgloss.NewStyle().Foreground(theme.Current.Primary).Render(line) + "\n")
 			} else {
@@ -365,13 +366,13 @@ func (m Model) View() string {
 		}
 
 	case StateEditingVar:
-		b.WriteString(fmt.Sprintf("Editing %s\n\n", m.activeFile))
-		b.WriteString(fmt.Sprintf("Key: %s\n", m.vars[m.varCursor].Key))
+		b.WriteString(i18n.Tf("Editing %s\n\n", m.activeFile))
+		b.WriteString(i18n.Tf("Key: %s\n", m.vars[m.varCursor].Key))
 		b.WriteString(m.textInput.View() + "\n\n")
-		b.WriteString("[enter] apply   [esc] cancel\n")
+		b.WriteString(i18n.T("[enter] apply   [esc] cancel\n"))
 
 	case StateDiff:
-		b.WriteString("Diff View - Confirm Save? [y/N]\n\n")
+		b.WriteString(i18n.T("Diff View - Confirm Save? [y/N]\n\n"))
 		hasChanges := false
 		for _, v := range m.vars {
 			if v.IsVar && v.IsDirty {
@@ -381,7 +382,7 @@ func (m Model) View() string {
 			}
 		}
 		if !hasChanges {
-			b.WriteString(lipgloss.NewStyle().Foreground(theme.Current.Dim).Render("No changes detected."))
+			b.WriteString(lipgloss.NewStyle().Foreground(theme.Current.Dim).Render(i18n.T("No changes detected.")))
 		}
 	}
 

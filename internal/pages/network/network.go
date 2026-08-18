@@ -7,6 +7,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"main/internal/agent"
+	"main/internal/components"
+	"main/internal/i18n"
 	netlib "main/internal/network"
 )
 
@@ -16,7 +18,7 @@ type Model struct {
 
 func New() Model {
 	return Model{
-		netInfo: netlib.NetworkInfo{Status: "Running speedtest (approx 15s)..."},
+		netInfo: netlib.NetworkInfo{Status: i18n.T("Running speedtest (approx 15s)...")},
 	}
 }
 
@@ -60,16 +62,22 @@ func (m Model) View() string {
 
 	// Network Interfaces Table
 	ifaceStr := lipgloss.JoinVertical(lipgloss.Left,
-		lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("86")).Render(fmt.Sprintf("%-12s %-8s %-16s %-16s %-20s", "INTERFACE", "STATUS", "IPV4", "TYPE", "TRAFFIC (TX/RX)")),
+		lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("86")).Render(fmt.Sprintf("%s %s %s %s %s", components.PadRight(i18n.T("INTERFACE"), 12), components.PadRight(i18n.T("STATUS"), 8), components.PadRight(i18n.T("IPV4"), 16), components.PadRight(i18n.T("TYPE"), 16), components.PadRight(i18n.T("TRAFFIC (TX/RX)"), 20))),
 		"────────────────────────────────────────────────────────────────────────────",
 	)
 	for _, iface := range m.netInfo.Interfaces {
 		status := success.Render(iface.Status)
-		if iface.Status != "UP" { status = lipgloss.NewStyle().Foreground(dimColor).Render(iface.Status) }
-		
+		if iface.Status != "UP" {
+			status = lipgloss.NewStyle().Foreground(dimColor).Render(iface.Status)
+		}
+
 		ip := iface.IPv4
-		if ip == "" { ip = "None" }
-		if len(ip) > 15 { ip = ip[:15] }
+		if ip == "" {
+			ip = "None"
+		}
+		if len(ip) > 15 {
+			ip = ip[:15]
+		}
 
 		txMbps := float64(iface.TxRate) * 8 / 1000000.0
 		rxMbps := float64(iface.RxRate) * 8 / 1000000.0
@@ -88,19 +96,25 @@ func (m Model) View() string {
 
 	// Ports Table
 	portStr := lipgloss.JoinVertical(lipgloss.Left,
-		lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("86")).Render(fmt.Sprintf("%-8s %-22s %-12s %-20s", "PROTO", "LOCAL ADDRESS", "STATE", "PROCESS")),
+		lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("86")).Render(fmt.Sprintf("%s %s %s %s", components.PadRight(i18n.T("PROTO"), 8), components.PadRight(i18n.T("LOCAL ADDRESS"), 22), components.PadRight(i18n.T("STATE"), 12), components.PadRight(i18n.T("PROCESS"), 20))),
 		"────────────────────────────────────────────────────────────────",
 	)
 	for i, p := range m.netInfo.Ports {
 		if i > 8 { // limit to 8 for display
-			portStr = lipgloss.JoinVertical(lipgloss.Left, portStr, lipgloss.NewStyle().Foreground(dimColor).Render("... and more"))
+			portStr = lipgloss.JoinVertical(lipgloss.Left, portStr, lipgloss.NewStyle().Foreground(dimColor).Render(i18n.T("... and more")))
 			break
 		}
 		addr := p.Address
-		if len(addr) > 20 { addr = addr[:20] }
+		if len(addr) > 20 {
+			addr = addr[:20]
+		}
 		proc := p.Process
-		if len(proc) > 20 { proc = proc[:20] }
-		if proc == "" { proc = "Unknown" }
+		if len(proc) > 20 {
+			proc = proc[:20]
+		}
+		if proc == "" {
+			proc = "Unknown"
+		}
 		portStr = lipgloss.JoinVertical(lipgloss.Left, portStr,
 			fmt.Sprintf("%-8s %-22s %-12s %-20s", p.Protocol, addr, p.State, proc),
 		)
@@ -113,17 +127,17 @@ func (m Model) View() string {
 
 	connStats := card.Render(
 		lipgloss.JoinVertical(lipgloss.Left,
-			titleCard.Render("NETWORK OVERVIEW"),
-			fmt.Sprintf("Hostname:    %s", m.netInfo.Hostname),
-			fmt.Sprintf("Public IP:   %s", m.netInfo.PublicIP),
-			fmt.Sprintf("Private IP:  %s", m.netInfo.PrivateIP),
-			fmt.Sprintf("Gateway:     %s", m.netInfo.Gateway),
+			titleCard.Render(i18n.T("NETWORK OVERVIEW")),
+			i18n.T("Hostname:    ")+m.netInfo.Hostname,
+			i18n.T("Public IP:   ")+m.netInfo.PublicIP,
+			i18n.T("Private IP:  ")+m.netInfo.PrivateIP,
+			i18n.T("Gateway:     ")+m.netInfo.Gateway,
 			"",
-			titleCard.Render("CONNECTION STATS"),
-			fmt.Sprintf("Active TCP:  %d", m.netInfo.Connection.ActiveTCP),
-			fmt.Sprintf("Active UDP:  %d", m.netInfo.Connection.ActiveUDP),
-			fmt.Sprintf("Established: %d", m.netInfo.Connection.Established),
-			fmt.Sprintf("Errors:      %d", m.netInfo.Connection.Errors),
+			titleCard.Render(i18n.T("CONNECTION STATS")),
+			i18n.T("Active TCP:  ")+fmt.Sprintf("%d", m.netInfo.Connection.ActiveTCP),
+			i18n.T("Active UDP:  ")+fmt.Sprintf("%d", m.netInfo.Connection.ActiveUDP),
+			i18n.T("Established: ")+fmt.Sprintf("%d", m.netInfo.Connection.Established),
+			i18n.T("Errors:      ")+fmt.Sprintf("%d", m.netInfo.Connection.Errors),
 		),
 	)
 
@@ -132,4 +146,4 @@ func (m Model) View() string {
 }
 
 func (m Model) Title() string { return "Network" }
-func (m Model) Icon() string { return "🌐" }
+func (m Model) Icon() string  { return "🌐" }

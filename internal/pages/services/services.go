@@ -10,6 +10,7 @@ import (
 	"main/internal/agent"
 	"main/internal/components"
 	sysengine "main/internal/engine/systemd"
+	"main/internal/i18n"
 	"main/internal/pages"
 	svclib "main/internal/services"
 	sshlib "main/internal/ssh"
@@ -45,7 +46,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, func() tea.Msg {
 					name := m.servicesList[m.cursor].Name
 					m.engine.RestartService(name)
-					return pages.LogActivityMsg{Message: "Restarted service " + name}
+					return pages.LogActivityMsg{Message: i18n.Tf("Restarted service %s", name)}
 				}
 			}
 		case "s", "S":
@@ -53,7 +54,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, func() tea.Msg {
 					name := m.servicesList[m.cursor].Name
 					m.engine.StopService(name)
-					return pages.LogActivityMsg{Message: "Stopped service " + name}
+					return pages.LogActivityMsg{Message: i18n.Tf("Stopped service %s", name)}
 				}
 			}
 		}
@@ -72,7 +73,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() string {
 	var items string
 	if len(m.servicesList) == 0 {
-		items = "No active services found."
+		items = i18n.T("No active services found.")
 	} else {
 		for i, s := range m.servicesList {
 			cursor := "  "
@@ -92,10 +93,10 @@ func (m Model) View() string {
 		}
 	}
 
-	controls := lipgloss.NewStyle().Foreground(theme.Current.Dim).Render("\nControls: [up/down] Navigate  [R] Restart Service  [S] Stop Service")
+	controls := lipgloss.NewStyle().Foreground(theme.Current.Dim).Render("\n" + i18n.T("Controls: [up/down] Navigate  [R] Restart Service  [S] Stop Service"))
 
 	content := lipgloss.JoinVertical(lipgloss.Left,
-		components.Title("SYSTEMD SERVICES"),
+		components.Title(i18n.T("SYSTEMD SERVICES")),
 		items,
 		controls,
 	)
@@ -104,4 +105,4 @@ func (m Model) View() string {
 }
 
 func (m Model) Title() string { return "Services" }
-func (m Model) Icon() string { return "⚙️" }
+func (m Model) Icon() string  { return "⚙️" }

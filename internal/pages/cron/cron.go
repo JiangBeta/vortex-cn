@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/bubbles/textinput"
 
 	"main/internal/agent"
 	"main/internal/components"
 	cronengine "main/internal/engine/cron"
+	"main/internal/i18n"
 	sshlib "main/internal/ssh"
 	"main/internal/theme"
 )
@@ -36,18 +37,18 @@ type Model struct {
 
 func New() Model {
 	inputs := make([]textinput.Model, 2)
-	
+
 	inputs[0] = textinput.New()
 	inputs[0].Placeholder = "* * * * *"
 	inputs[0].Focus()
-	
+
 	inputs[1] = textinput.New()
 	inputs[1].Placeholder = "/usr/bin/certbot renew"
-	
+
 	return Model{
 		jobs:        []cronengine.CronJob{},
 		loading:     false,
-		status:      "Connecting to Cron Engine...",
+		status:      i18n.T("Connecting to Cron Engine..."),
 		currentMode: modeList,
 		inputs:      inputs,
 	}
@@ -73,13 +74,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					// Submit
 					schedule := m.inputs[0].Value()
 					cmdStr := m.inputs[1].Value()
-					
+
 					// Basic syntax check
 					if len(strings.Fields(schedule)) != 5 {
-						m.status = "❌ Invalid cron syntax. Expected 5 fields."
+						m.status = i18n.T("❌ Invalid cron syntax. Expected 5 fields.")
 						return m, nil
 					}
-					
+
 					return m, func() tea.Msg {
 						err := m.engine.AddJob(schedule, cmdStr)
 						return operationCompleteMsg{err: err}
@@ -87,16 +88,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			case "up", "shift+tab":
 				m.focusIndex--
-				if m.focusIndex < 0 { m.focusIndex = len(m.inputs) }
+				if m.focusIndex < 0 {
+					m.focusIndex = len(m.inputs)
+				}
 				cmds = append(cmds, m.updateFocus()...)
 				return m, tea.Batch(cmds...)
 			case "down", "tab":
 				m.focusIndex++
-				if m.focusIndex > len(m.inputs) { m.focusIndex = 0 }
+				if m.focusIndex > len(m.inputs) {
+					m.focusIndex = 0
+				}
 				cmds = append(cmds, m.updateFocus()...)
 				return m, tea.Batch(cmds...)
 			}
-			
+
 			// Handle text input
 			for i := range m.inputs {
 				if i == m.focusIndex {
@@ -111,9 +116,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// List mode
 		switch msg.String() {
 		case "up", "k":
-			if m.cursor > 0 { m.cursor-- }
+			if m.cursor > 0 {
+				m.cursor--
+			}
 		case "down", "j":
-			if m.cursor < len(m.jobs)-1 { m.cursor++ }
+			if m.cursor < len(m.jobs)-1 {
+				m.cursor++
+			}
 		case "a", "A":
 			m.currentMode = modeAdd
 			m.focusIndex = 0
@@ -125,7 +134,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(m.jobs) > 0 {
 				job := m.jobs[m.cursor]
 				if job.User != "user" { // Assuming "user" is the only writable crontab safely here
-					m.status = "⚠️ Cannot delete system crontabs directly."
+					m.status = i18n.T("⚠️ Cannot delete system crontabs directly.")
 					return m, nil
 				}
 				return m, func() tea.Msg {
@@ -137,7 +146,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case sshlib.ConnectedMsg:
 		m.engine = cronengine.NewEngine(msg.Client)
-		m.status = "Connected. Fetching jobs..."
+		m.status = i18n.T("Connected. Fetching jobs...")
 		m.loading = true
 		return m, func() tea.Msg {
 			jobs, err := m.engine.ListJobs()
@@ -159,17 +168,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case jobsLoadedMsg:
 		m.jobs = []cronengine.CronJob(msg)
 		m.loading = false
-		m.status = "Idle"
+		m.status = i18n.T("Idle")
 		if m.cursor >= len(m.jobs) {
 			m.cursor = len(m.jobs) - 1
-			if m.cursor < 0 { m.cursor = 0 }
+			if m.cursor < 0 {
+				m.cursor = 0
+			}
 		}
 
 	case operationCompleteMsg:
 		if msg.err != nil {
-			m.status = "❌ Error: " + msg.err.Error()
+			m.status = i18n.T("❌ Error: ") + msg.err.Error()
 		} else {
-			m.status = "✅ Success!"
+			m.status = i18n.T("✅ Success!")
 			m.currentMode = modeList
 			// Refresh jobs
 			m.loading = true
@@ -197,18 +208,28 @@ func (m *Model) updateFocus() []tea.Cmd {
 func humanizeCron(schedule string) string {
 	val := strings.TrimSpace(schedule)
 	parts := strings.Fields(val)
-	if val == "* * * * *" { return "Every minute" }
-	if val == "0 * * * *" { return "Every hour at minute 0" }
-	if val == "0 0 * * *" { return "Every day at midnight" }
-	if val == "0 0 * * 0" { return "Every Sunday at midnight" }
-	
+	if val == "* * * * *" {
+		return i18n.T("Every minute")
+	}
+	if val == "0 * * * *" {
+		return i18n.T("Every hour at minute 0")
+	}
+	if val == "0 0 * * *" {
+		return i18n.T("Every day at midnight")
+	}
+	if val == "0 0 * * 0" {
+		return i18n.T("Every Sunday at midnight")
+	}
+
 	if len(parts) == 5 {
 		min, hr, dom, mon, dow := parts[0], parts[1], parts[2], parts[3], parts[4]
 		if dom == "*" && mon == "*" && dow == "*" && hr != "*" && min != "*" && !strings.Contains(hr, ",") && !strings.Contains(min, ",") {
-			return fmt.Sprintf("Every day at %02s:%02s", hr, min)
+			return i18n.Tf("Every day at %02s:%02s", hr, min)
 		} else if dom == "*" && mon == "*" && hr != "*" && min != "*" && dow != "*" && !strings.Contains(dow, ",") {
 			days := map[string]string{"0": "Sunday", "1": "Monday", "2": "Tuesday", "3": "Wednesday", "4": "Thursday", "5": "Friday", "6": "Saturday", "7": "Sunday"}
-			if d, ok := days[dow]; ok { return fmt.Sprintf("Every %s at %02s:%02s", d, hr, min) }
+			if d, ok := days[dow]; ok {
+				return i18n.Tf("Every %s at %02s:%02s", i18n.T(d), hr, min)
+			}
 		}
 	}
 	return schedule
@@ -221,30 +242,30 @@ func (m Model) View() string {
 
 	if m.currentMode == modeAdd {
 		var b strings.Builder
-		b.WriteString(components.Title("ADD CRON JOB") + "\n\n")
-		b.WriteString(lipgloss.NewStyle().Foreground(primaryColor).Render("Schedule (e.g. 0 5 * * *):\n"))
+		b.WriteString(components.Title(i18n.T("ADD CRON JOB")) + "\n\n")
+		b.WriteString(lipgloss.NewStyle().Foreground(primaryColor).Render(i18n.T("Schedule (e.g. 0 5 * * *):\n")))
 		b.WriteString(m.inputs[0].View() + "\n\n")
-		b.WriteString(lipgloss.NewStyle().Foreground(primaryColor).Render("Command:\n"))
+		b.WriteString(lipgloss.NewStyle().Foreground(primaryColor).Render(i18n.T("Command:\n")))
 		b.WriteString(m.inputs[1].View() + "\n\n")
-		
-		btn := "[ Submit ]"
+
+		btn := i18n.T("[ Submit ]")
 		if m.focusIndex == 2 {
 			btn = lipgloss.NewStyle().Foreground(theme.Current.Bg).Background(primaryColor).Bold(true).Render(btn)
 		} else {
 			btn = lipgloss.NewStyle().Foreground(dimColor).Render(btn)
 		}
-		
+
 		b.WriteString(btn + "\n\n")
 		b.WriteString(lipgloss.NewStyle().Foreground(theme.Current.Error).Render(m.status) + "\n")
-		b.WriteString(lipgloss.NewStyle().Foreground(dimColor).Render("Press ESC to cancel."))
+		b.WriteString(lipgloss.NewStyle().Foreground(dimColor).Render(i18n.T("Press ESC to cancel.")))
 		return components.Card(b.String(), 90)
 	}
 
 	var b strings.Builder
-	b.WriteString(components.Title("SCHEDULED TASKS (CRON)") + "\n\n")
-	
+	b.WriteString(components.Title(i18n.T("SCHEDULED TASKS (CRON)")) + "\n\n")
+
 	if len(m.jobs) == 0 {
-		b.WriteString(lipgloss.NewStyle().Foreground(dimColor).Render("No cron jobs found.\n"))
+		b.WriteString(lipgloss.NewStyle().Foreground(dimColor).Render(i18n.T("No cron jobs found.\n")))
 	} else {
 		for i, j := range m.jobs {
 			cursor := "  "
@@ -253,20 +274,22 @@ func (m Model) View() string {
 				cursor = "▶ "
 				style = lipgloss.NewStyle().Foreground(primaryColor).Bold(true)
 			}
-			
+
 			human := humanizeCron(j.Schedule)
 			schedStr := lipgloss.NewStyle().Foreground(accentColor).Width(25).Render(j.Schedule + " (" + human + ")")
 			userStr := lipgloss.NewStyle().Foreground(theme.Current.Warning).Width(10).Render(j.User)
 			cmdStr := lipgloss.NewStyle().Foreground(dimColor).Render(j.Command)
-			
-			if len(cmdStr) > 50 { cmdStr = cmdStr[:47] + "..." }
-			
+
+			if len(cmdStr) > 50 {
+				cmdStr = cmdStr[:47] + "..."
+			}
+
 			b.WriteString(fmt.Sprintf("%s%s %s %s\n", cursor, userStr, schedStr, style.Render(cmdStr)))
 		}
 	}
-	
-	b.WriteString("\n" + lipgloss.NewStyle().Foreground(dimColor).Render("[A] Add Job   [D] Delete Job   [Up/Down] Navigate"))
-	b.WriteString("\n" + lipgloss.NewStyle().Foreground(dimColor).Render("Status: "+m.status))
+
+	b.WriteString("\n" + lipgloss.NewStyle().Foreground(dimColor).Render(i18n.T("[A] Add Job   [D] Delete Job   [Up/Down] Navigate")))
+	b.WriteString("\n" + lipgloss.NewStyle().Foreground(dimColor).Render(i18n.T("Status: ")+m.status))
 
 	return components.Card(b.String(), 120)
 }
@@ -276,4 +299,4 @@ func (m Model) IsInputActive() bool {
 }
 
 func (m Model) Title() string { return "Cron" }
-func (m Model) Icon() string { return "🕒" }
+func (m Model) Icon() string  { return "🕒" }

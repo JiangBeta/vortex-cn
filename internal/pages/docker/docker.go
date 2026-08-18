@@ -11,6 +11,7 @@ import (
 	"main/internal/config"
 	docklib "main/internal/docker"
 	dockerengine "main/internal/engine/docker"
+	"main/internal/i18n"
 	"main/internal/pages"
 	sshlib "main/internal/ssh"
 	"main/internal/theme"
@@ -21,16 +22,16 @@ type OpenDockerShellMsg struct {
 }
 
 type Model struct {
-	dockerStats docklib.DockerStats
-	cursor      int
-	engine      *dockerengine.Engine
-	confirming  bool
+	dockerStats   docklib.DockerStats
+	cursor        int
+	engine        *dockerengine.Engine
+	confirming    bool
 	pendingAction string
 }
 
 func New() Model {
 	return Model{
-		dockerStats: docklib.DockerStats{Status: "Connecting..."},
+		dockerStats: docklib.DockerStats{Status: i18n.T("Connecting...")},
 		cursor:      0,
 	}
 }
@@ -65,7 +66,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.confirming = false
 				return m, func() tea.Msg {
 					m.engine.RestartContainer(c.ID)
-					return pages.LogActivityMsg{Message: "Restarted Docker container " + c.Name}
+					return pages.LogActivityMsg{Message: i18n.Tf("Restarted Docker container %s", c.Name)}
 				}
 			}
 		case "s", "S":
@@ -79,7 +80,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.confirming = false
 				return m, func() tea.Msg {
 					m.engine.StopContainer(c.ID)
-					return pages.LogActivityMsg{Message: "Stopped Docker container " + c.Name}
+					return pages.LogActivityMsg{Message: i18n.Tf("Stopped Docker container %s", c.Name)}
 				}
 			}
 		case "y", "Y":
@@ -91,11 +92,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, func() tea.Msg {
 					if action == "restart" {
 						m.engine.RestartContainer(c.ID)
-						return pages.LogActivityMsg{Message: "Restarted Docker container " + c.Name}
+						return pages.LogActivityMsg{Message: i18n.Tf("Restarted Docker container %s", c.Name)}
 					}
 					if action == "stop" {
 						m.engine.StopContainer(c.ID)
-						return pages.LogActivityMsg{Message: "Stopped Docker container " + c.Name}
+						return pages.LogActivityMsg{Message: i18n.Tf("Stopped Docker container %s", c.Name)}
 					}
 					return nil
 				}
@@ -123,7 +124,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	header := fmt.Sprintf("Status: %s | Containers: %d | Images: %d | Volumes: %d",
+	header := i18n.Tf("Status: %s | Containers: %d | Images: %d | Volumes: %d",
 		m.dockerStats.Status,
 		m.dockerStats.Containers,
 		m.dockerStats.Images,
@@ -132,7 +133,7 @@ func (m Model) View() string {
 
 	var list string
 	if len(m.dockerStats.ContainersList) == 0 {
-		list = "No containers found."
+		list = i18n.T("No containers found.")
 	} else {
 		for i, c := range m.dockerStats.ContainersList {
 			cursor := "  "
@@ -148,18 +149,18 @@ func (m Model) View() string {
 				stateColor = lipgloss.Color("196")
 			}
 
-			stateStr := lipgloss.NewStyle().Foreground(stateColor).Render(fmt.Sprintf("[%s]", c.State))
+			stateStr := lipgloss.NewStyle().Foreground(stateColor).Render(fmt.Sprintf("[%s]", i18n.T(c.State)))
 			list += fmt.Sprintf("%s %s %s %s\n", cursor, stateStr, style.Render(c.Name), lipgloss.NewStyle().Foreground(theme.Current.Dim).Render(c.Image))
 		}
 	}
 
-	controls := lipgloss.NewStyle().Foreground(theme.Current.Dim).Render("\nControls: [up/down] Navigate  [Enter] Connect  [R] Restart  [S] Stop")
+	controls := lipgloss.NewStyle().Foreground(theme.Current.Dim).Render("\n" + i18n.T("Controls: [up/down] Navigate  [Enter] Connect  [R] Restart  [S] Stop"))
 	if m.confirming {
-		controls = lipgloss.NewStyle().Foreground(theme.Current.Warning).Bold(true).Render(fmt.Sprintf("\nAre you sure you want to %s this container? (Y/N)", m.pendingAction))
+		controls = lipgloss.NewStyle().Foreground(theme.Current.Warning).Bold(true).Render("\n" + i18n.Tf("Are you sure you want to %s this container? (Y/N)", i18n.T(m.pendingAction)))
 	}
 
 	content := lipgloss.JoinVertical(lipgloss.Left,
-		components.Title("DOCKER ENGINE"),
+		components.Title(i18n.T("DOCKER ENGINE")),
 		header,
 		"\n"+list,
 		controls,
@@ -169,4 +170,4 @@ func (m Model) View() string {
 }
 
 func (m Model) Title() string { return "Docker" }
-func (m Model) Icon() string { return "🐳" }
+func (m Model) Icon() string  { return "🐳" }

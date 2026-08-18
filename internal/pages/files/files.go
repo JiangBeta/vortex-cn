@@ -13,6 +13,7 @@ import (
 	"main/internal/agent"
 	"main/internal/components"
 	fileengine "main/internal/engine/files"
+	"main/internal/i18n"
 	sshlib "main/internal/ssh"
 	"main/internal/theme"
 )
@@ -37,19 +38,19 @@ const (
 )
 
 type Model struct {
-	cwd         string
-	files       []fileengine.FileInfo
-	cursor      int
-	engine      *fileengine.Engine
-	state       AppState
-	
-	opMode      OperationMode
-	textInput   textinput.Model
-	
+	cwd    string
+	files  []fileengine.FileInfo
+	cursor int
+	engine *fileengine.Engine
+	state  AppState
+
+	opMode    OperationMode
+	textInput textinput.Model
+
 	textArea    textarea.Model
 	editingFile string
 	isDirty     bool
-	
+
 	errorMessage string
 	loading      bool
 }
@@ -60,7 +61,7 @@ func New() Model {
 	ti.Width = 40
 
 	ta := textarea.New()
-	ta.Placeholder = "Empty file..."
+	ta.Placeholder = i18n.T("Empty file...")
 	ta.SetWidth(80)
 	ta.SetHeight(20)
 
@@ -152,7 +153,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case filesResponseMsg:
 		m.loading = false
 		if msg.err != nil {
-			m.errorMessage = "Error: " + msg.err.Error()
+			m.errorMessage = i18n.T("Error: ") + msg.err.Error()
 			m.files = []fileengine.FileInfo{}
 		} else {
 			m.errorMessage = ""
@@ -166,7 +167,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case fileReadMsg:
 		m.loading = false
 		if msg.err != nil {
-			m.errorMessage = "Error reading file: " + msg.err.Error()
+			m.errorMessage = i18n.T("Error reading file: ") + msg.err.Error()
 			m.state = StateBrowsing
 		} else {
 			m.textArea.SetValue(msg.content)
@@ -176,17 +177,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case fileSaveMsg:
 		if msg.err != nil {
-			m.errorMessage = "Error saving file: " + msg.err.Error()
+			m.errorMessage = i18n.T("Error saving file: ") + msg.err.Error()
 		} else {
 			m.isDirty = false
-			m.errorMessage = "File saved successfully."
+			m.errorMessage = i18n.T("File saved successfully.")
 		}
 		return m, nil
 
 	case operationCompleteMsg:
 		m.loading = false
 		if msg.err != nil {
-			m.errorMessage = "Operation failed: " + msg.err.Error()
+			m.errorMessage = i18n.T("Operation failed: ") + msg.err.Error()
 		} else {
 			m.errorMessage = ""
 		}
@@ -242,15 +243,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				val := m.textInput.Value()
 				if m.opMode == ModeDelete && strings.ToLower(val) != "y" {
 					m.state = StateBrowsing
-					m.errorMessage = "Delete cancelled."
+					m.errorMessage = i18n.T("Delete cancelled.")
 					return m, nil
 				}
-				
+
 				target := m.files[m.cursor].Name
 				if m.opMode == ModeDelete {
 					target = strings.TrimSuffix(target, "/")
 				}
-				
+
 				m.loading = true
 				return m, doOperation(m.engine, m.opMode, m.cwd, m.files[m.cursor].Name, val)
 			default:
@@ -288,7 +289,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.editingFile = selected.Name
 						m.isDirty = false
 						m.errorMessage = ""
-						m.textArea.SetValue("Loading...")
+						m.textArea.SetValue(i18n.T("Loading..."))
 						m.textArea.Focus()
 						m.loading = true
 						return m, readFile(m.engine, path.Join(m.cwd, selected.Name))
@@ -302,12 +303,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor = 0
 				m.loading = true
 				return m, fetchDir(m.engine, m.cwd)
-				
+
 			case "r": // Rename
 				if len(m.files) > 0 {
 					m.state = StatePrompting
 					m.opMode = ModeRename
-					m.textInput.Placeholder = "New name"
+					m.textInput.Placeholder = i18n.T("New name")
 					m.textInput.SetValue(m.files[m.cursor].Name)
 					m.textInput.Focus()
 				}
@@ -315,7 +316,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if len(m.files) > 0 {
 					m.state = StatePrompting
 					m.opMode = ModeCopy
-					m.textInput.Placeholder = "Destination path"
+					m.textInput.Placeholder = i18n.T("Destination path")
 					m.textInput.SetValue(m.files[m.cursor].Name + "_copy")
 					m.textInput.Focus()
 				}
@@ -323,7 +324,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if len(m.files) > 0 {
 					m.state = StatePrompting
 					m.opMode = ModeMove
-					m.textInput.Placeholder = "Destination path"
+					m.textInput.Placeholder = i18n.T("Destination path")
 					m.textInput.SetValue(m.files[m.cursor].Name)
 					m.textInput.Focus()
 				}
@@ -331,7 +332,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if len(m.files) > 0 {
 					m.state = StatePrompting
 					m.opMode = ModeChmod
-					m.textInput.Placeholder = "e.g. 755"
+					m.textInput.Placeholder = i18n.T("e.g. 755")
 					m.textInput.SetValue("")
 					m.textInput.Focus()
 				}
@@ -339,7 +340,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if len(m.files) > 0 {
 					m.state = StatePrompting
 					m.opMode = ModeDelete
-					m.textInput.Placeholder = "Type 'y' to confirm"
+					m.textInput.Placeholder = i18n.T("Type 'y' to confirm")
 					m.textInput.SetValue("")
 					m.textInput.Focus()
 				}
@@ -355,26 +356,26 @@ func (m Model) View() string {
 
 	// Common header with breadcrumbs
 	headerStyle := lipgloss.NewStyle().Foreground(theme.Current.Primary).Bold(true)
-	breadcrumbs := fmt.Sprintf("CWD: %s", m.cwd)
-	
+	breadcrumbs := i18n.Tf("CWD: %s", m.cwd)
+
 	if m.errorMessage != "" {
 		breadcrumbs += lipgloss.NewStyle().Foreground(lipgloss.Color("#ff0000")).Render("   " + m.errorMessage)
 	}
-	
+
 	content = lipgloss.JoinVertical(lipgloss.Left,
-		components.Title("REMOTE FILE EXPLORER"),
+		components.Title(i18n.T("REMOTE FILE EXPLORER")),
 		headerStyle.Render(breadcrumbs)+"\n",
 	)
 
 	switch m.state {
 	case StateEditing:
-		status := " [Saved]"
+		status := i18n.T(" [Saved]")
 		if m.isDirty {
-			status = " [Unsaved]"
+			status = i18n.T(" [Unsaved]")
 		}
-		editorHeader := lipgloss.NewStyle().Foreground(theme.Current.Accent).Render(fmt.Sprintf("Editing: %s %s", m.editingFile, status))
-		controls := lipgloss.NewStyle().Foreground(theme.Current.Dim).Render("\nControls: [ESC] Back  [CTRL+S] Save")
-		
+		editorHeader := lipgloss.NewStyle().Foreground(theme.Current.Accent).Render(i18n.Tf("Editing: %s %s", m.editingFile, status))
+		controls := lipgloss.NewStyle().Foreground(theme.Current.Dim).Render("\n" + i18n.T("Controls: [ESC] Back  [CTRL+S] Save"))
+
 		content = lipgloss.JoinVertical(lipgloss.Left,
 			content,
 			editorHeader,
@@ -387,19 +388,19 @@ func (m Model) View() string {
 		promptLabel := ""
 		switch m.opMode {
 		case ModeRename:
-			promptLabel = "Rename " + m.files[m.cursor].Name + " to:"
+			promptLabel = i18n.Tf("Rename %s to:", m.files[m.cursor].Name)
 		case ModeCopy:
-			promptLabel = "Copy " + m.files[m.cursor].Name + " to:"
+			promptLabel = i18n.Tf("Copy %s to:", m.files[m.cursor].Name)
 		case ModeMove:
-			promptLabel = "Move " + m.files[m.cursor].Name + " to:"
+			promptLabel = i18n.Tf("Move %s to:", m.files[m.cursor].Name)
 		case ModeChmod:
-			promptLabel = "Change mode for " + m.files[m.cursor].Name + ":"
+			promptLabel = i18n.Tf("Change mode for %s:", m.files[m.cursor].Name)
 		case ModeDelete:
-			promptLabel = "Are you sure you want to delete " + m.files[m.cursor].Name + "?"
+			promptLabel = i18n.Tf("Are you sure you want to delete %s?", m.files[m.cursor].Name)
 		}
-		
-		controls := lipgloss.NewStyle().Foreground(theme.Current.Dim).Render("\nControls: [ENTER] Submit  [ESC] Cancel")
-		
+
+		controls := lipgloss.NewStyle().Foreground(theme.Current.Dim).Render("\n" + i18n.T("Controls: [ENTER] Submit  [ESC] Cancel"))
+
 		content = lipgloss.JoinVertical(lipgloss.Left,
 			content,
 			lipgloss.NewStyle().Foreground(theme.Current.Accent).Render(promptLabel),
@@ -409,9 +410,9 @@ func (m Model) View() string {
 
 	case StateBrowsing:
 		if m.loading {
-			content = lipgloss.JoinVertical(lipgloss.Left, content, "Loading...")
+			content = lipgloss.JoinVertical(lipgloss.Left, content, i18n.T("Loading..."))
 		} else if len(m.files) == 0 {
-			content = lipgloss.JoinVertical(lipgloss.Left, content, "Directory is empty.")
+			content = lipgloss.JoinVertical(lipgloss.Left, content, i18n.T("Directory is empty."))
 		} else {
 			// Fixed columns
 			colName := 35
@@ -419,14 +420,14 @@ func (m Model) View() string {
 			colPerm := 12
 			colOwner := 15
 			colMod := 20
-			
-			headerRow := fmt.Sprintf("  %-*s %-*s %-*s %-*s %-*s", 
-				colName, "Name", 
-				colSize, "Size", 
-				colPerm, "Perms", 
-				colOwner, "Owner", 
-				colMod, "Modified")
-				
+
+			headerRow := fmt.Sprintf("  %s %s %s %s %s",
+				components.PadRight(i18n.T("Name"), colName),
+				components.PadRight(i18n.T("Size"), colSize),
+				components.PadRight(i18n.T("Perms"), colPerm),
+				components.PadRight(i18n.T("Owner"), colOwner),
+				components.PadRight(i18n.T("Modified"), colMod))
+
 			items := lipgloss.NewStyle().Foreground(theme.Current.Dim).Bold(true).Render(headerRow) + "\n"
 
 			start := 0
@@ -447,7 +448,7 @@ func (m Model) View() string {
 				f := m.files[i]
 				cursor := "  "
 				style := lipgloss.NewStyle().Foreground(theme.Current.Text)
-				
+
 				if m.cursor == i {
 					cursor = "▶ "
 					style = lipgloss.NewStyle().Foreground(theme.Current.Primary).Bold(true)
@@ -458,7 +459,7 @@ func (m Model) View() string {
 					icon = "📁"
 					style = style.Foreground(theme.Current.Accent)
 				}
-				
+
 				// Semantic color for permission risk
 				permStyle := lipgloss.NewStyle().Foreground(theme.Current.Text)
 				if len(f.Permissions) > 8 && f.Permissions[8] == 'w' {
@@ -466,7 +467,7 @@ func (m Model) View() string {
 				} else if len(f.Permissions) > 5 && f.Permissions[5] == 'w' {
 					permStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#ffff00")) // Yellow for group-writable
 				}
-				
+
 				// Truncate name if too long
 				displayNm := f.Name
 				if len(displayNm) > colName-3 {
@@ -486,7 +487,7 @@ func (m Model) View() string {
 			content = lipgloss.JoinVertical(lipgloss.Left, content, items)
 		}
 
-		controls := lipgloss.NewStyle().Foreground(theme.Current.Dim).Render("\nControls: [↑/↓] Navigate  [ENTER] Open  [BACKSPACE] Go Up\nOperations: [r]ename  [c]opy  [m]ove  [x]chmod  [d]elete")
+		controls := lipgloss.NewStyle().Foreground(theme.Current.Dim).Render("\n" + i18n.T("Controls: [↑/↓] Navigate  [ENTER] Open  [BACKSPACE] Go Up\nOperations: [r]ename  [c]opy  [m]ove  [x]chmod  [d]elete"))
 		content = lipgloss.JoinVertical(lipgloss.Left, content, controls)
 	}
 
@@ -494,4 +495,4 @@ func (m Model) View() string {
 }
 
 func (m Model) Title() string { return "Files" }
-func (m Model) Icon() string { return "📁" }
+func (m Model) Icon() string  { return "📁" }

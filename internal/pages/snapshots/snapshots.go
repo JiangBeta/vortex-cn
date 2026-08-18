@@ -9,6 +9,7 @@ import (
 
 	"main/internal/components"
 	snapengine "main/internal/engine/snapshots"
+	"main/internal/i18n"
 	"main/internal/pages"
 	sshlib "main/internal/ssh"
 	"main/internal/theme"
@@ -28,7 +29,7 @@ type Model struct {
 }
 
 func New() Model {
-	return Model{status: "Connecting..."}
+	return Model{status: i18n.T("Connecting...")}
 }
 
 func (m Model) Init() tea.Cmd { return nil }
@@ -53,7 +54,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case snapshotsLoadedMsg:
 		m.snapshots = msg
-		m.status = "Idle."
+		m.status = i18n.T("Idle.")
 		if m.cursor >= len(m.snapshots) && len(m.snapshots) > 0 {
 			m.cursor = len(m.snapshots) - 1
 		}
@@ -61,7 +62,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case actionCompleteMsg:
 		if msg.err != nil {
-			m.status = "Error: " + msg.err.Error()
+			m.status = i18n.T("Error: ") + msg.err.Error()
 		} else {
 			m.status = msg.msg
 		}
@@ -73,19 +74,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "esc":
 				m.inputMode = false
 				m.inputVal = ""
-				m.status = "Idle."
+				m.status = i18n.T("Idle.")
 			case "enter":
 				targetFile := strings.TrimSpace(m.inputVal)
 				m.inputMode = false
 				m.inputVal = ""
 				if targetFile != "" && m.engine != nil {
-					m.status = "Creating snapshot of " + targetFile + "..."
+					m.status = i18n.Tf("Creating snapshot of %s...", targetFile)
 					return m, func() tea.Msg {
 						_, err := m.engine.CreateSnapshot(targetFile)
-						return actionCompleteMsg{err: err, msg: "Snapshot created for " + targetFile}
+						return actionCompleteMsg{err: err, msg: i18n.Tf("Snapshot created for %s", targetFile)}
 					}
 				}
-				m.status = "Idle."
+				m.status = i18n.T("Idle.")
 			case "backspace":
 				if len(m.inputVal) > 0 {
 					m.inputVal = m.inputVal[:len(m.inputVal)-1]
@@ -110,33 +111,33 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "s", "S":
 			m.inputMode = true
 			m.inputVal = ""
-			m.status = "Enter absolute file path to snapshot: "
+			m.status = i18n.T("Enter absolute file path to snapshot: ")
 		case "r", "R":
 			if len(m.snapshots) > 0 && m.engine != nil {
 				snap := m.snapshots[m.cursor]
-				m.status = "Rolling back " + snap.Target + "..."
+				m.status = i18n.Tf("Rolling back %s...", snap.Target)
 				return m, func() tea.Msg {
 					err := m.engine.Rollback(snap.ID, snap.Target)
-					return actionCompleteMsg{err: err, msg: "Rollback successful for " + snap.Target}
+					return actionCompleteMsg{err: err, msg: i18n.Tf("Rollback successful for %s", snap.Target)}
 				}
 			}
 		case "d", "D":
 			if len(m.snapshots) > 0 && m.engine != nil {
 				snap := m.snapshots[m.cursor]
-				m.status = "Deleting snapshot..."
+				m.status = i18n.T("Deleting snapshot...")
 				return m, func() tea.Msg {
 					err := m.engine.DeleteSnapshot(snap.ID)
-					return actionCompleteMsg{err: err, msg: "Snapshot deleted."}
+					return actionCompleteMsg{err: err, msg: i18n.T("Snapshot deleted.")}
 				}
 			}
 		case "f", "F":
-			m.status = "Scanning for snapshots..."
+			m.status = i18n.T("Scanning for snapshots...")
 			return m, fetchSnapshots(m.engine)
 		}
 
 	case sshlib.ConnectedMsg:
 		m.engine = snapengine.NewEngine(msg.Client)
-		m.status = "Scanning for config snapshots..."
+		m.status = i18n.T("Scanning for config snapshots...")
 		return m, fetchSnapshots(m.engine)
 	}
 	return m, nil
@@ -145,7 +146,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() string {
 	var items string
 	if m.snapshots == nil || len(m.snapshots) == 0 {
-		items = "No config snapshots found in /tmp/vortex_snapshots."
+		items = i18n.T("No config snapshots found in /tmp/vortex_snapshots.")
 	} else {
 		start := 0
 		maxLines := 15
@@ -163,7 +164,7 @@ func (m Model) View() string {
 
 		// Header
 		items += lipgloss.NewStyle().Foreground(theme.Current.Dim).Bold(true).Render(
-			fmt.Sprintf("  %-25s %-20s %s\n", "TARGET FILE", "TIMESTAMP", "SIZE"),
+			fmt.Sprintf("  %s %s %s\n", components.PadRight(i18n.T("TARGET FILE"), 25), components.PadRight(i18n.T("TIMESTAMP"), 20), i18n.T("SIZE")),
 		)
 
 		for i := start; i < end; i++ {
@@ -206,14 +207,14 @@ func (m Model) View() string {
 	if m.inputMode {
 		statusBlock = lipgloss.NewStyle().Foreground(theme.Current.Warning).Render("\n" + m.status + m.inputVal + "█")
 	} else {
-		statusBlock = lipgloss.NewStyle().Foreground(theme.Current.Primary).Render("\nStatus: " + m.status)
+		statusBlock = lipgloss.NewStyle().Foreground(theme.Current.Primary).Render("\n" + i18n.T("Status: ") + m.status)
 	}
 
-	controls := lipgloss.NewStyle().Foreground(theme.Current.Dim).Render("\nControls: [up/down] Navigate  [S] Manual Snapshot  [R] Rollback  [D] Delete  [F] Refresh")
+	controls := lipgloss.NewStyle().Foreground(theme.Current.Dim).Render("\n" + i18n.T("Controls: [up/down] Navigate  [S] Manual Snapshot  [R] Rollback  [D] Delete  [F] Refresh"))
 
 	content := lipgloss.JoinVertical(lipgloss.Left,
-		components.Title("CONFIG CHANGE SNAPSHOTS"),
-		lipgloss.NewStyle().Foreground(theme.Current.Dim).Render("Automatically backups previous versions of files before they are modified."),
+		components.Title(i18n.T("CONFIG CHANGE SNAPSHOTS")),
+		lipgloss.NewStyle().Foreground(theme.Current.Dim).Render(i18n.T("Automatically backups previous versions of files before they are modified.")),
 		"\n",
 		items,
 		statusBlock,

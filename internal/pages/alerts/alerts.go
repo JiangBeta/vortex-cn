@@ -12,6 +12,7 @@ import (
 	"main/internal/components"
 	"main/internal/config"
 	"main/internal/engine/alerts"
+	"main/internal/i18n"
 	"main/internal/pages"
 	"main/internal/theme"
 )
@@ -42,14 +43,14 @@ func init() {
 func New() Model {
 	eng := alerts.NewEngine()
 	inputs := make([]textinput.Model, 3)
-	
+
 	inputs[0] = textinput.New()
-	inputs[0].Placeholder = "My Alert"
+	inputs[0].Placeholder = i18n.T("My Alert")
 	inputs[0].Focus()
-	
+
 	inputs[1] = textinput.New()
-	inputs[1].Placeholder = "discord or slack"
-	
+	inputs[1].Placeholder = i18n.T("discord or slack")
+
 	inputs[2] = textinput.New()
 	inputs[2].Placeholder = "https://..."
 
@@ -58,7 +59,7 @@ func New() Model {
 		webhooks:    eng.GetWebhooks(),
 		currentMode: modeList,
 		inputs:      inputs,
-		status:      "Idle",
+		status:      i18n.T("Idle"),
 	}
 }
 
@@ -92,7 +93,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.focusIndex == len(m.inputs) {
 					wType := alerts.WebhookType(strings.ToLower(m.inputs[1].Value()))
 					if wType != alerts.Discord && wType != alerts.Slack {
-						m.status = "❌ Type must be 'discord' or 'slack'"
+						m.status = i18n.T("❌ Type must be 'discord' or 'slack'")
 						return m, nil
 					}
 
@@ -104,9 +105,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					err := m.engine.AddWebhook(w)
 					if err != nil {
-						m.status = "❌ Error: " + err.Error()
+						m.status = i18n.T("❌ Error: ") + err.Error()
 					} else {
-						m.status = "✅ Webhook added!"
+						m.status = i18n.T("✅ Webhook added!")
 						m.currentMode = modeList
 						m.webhooks = m.engine.GetWebhooks()
 					}
@@ -160,9 +161,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(m.webhooks) > 0 {
 				err := m.engine.DeleteWebhook(m.webhooks[m.cursor].ID)
 				if err != nil {
-					m.status = "❌ Error: " + err.Error()
+					m.status = i18n.T("❌ Error: ") + err.Error()
 				} else {
-					m.status = "✅ Deleted"
+					m.status = i18n.T("✅ Deleted")
 					m.webhooks = m.engine.GetWebhooks()
 					if m.cursor >= len(m.webhooks) {
 						m.cursor = len(m.webhooks) - 1
@@ -176,9 +177,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(m.webhooks) > 0 {
 				err := m.engine.ToggleWebhook(m.webhooks[m.cursor].ID)
 				if err != nil {
-					m.status = "❌ Error: " + err.Error()
+					m.status = i18n.T("❌ Error: ") + err.Error()
 				} else {
-					m.status = "✅ Toggled"
+					m.status = i18n.T("✅ Toggled")
 					m.webhooks = m.engine.GetWebhooks()
 				}
 			}
@@ -206,32 +207,32 @@ func (m Model) View() string {
 
 	if m.currentMode == modeAdd {
 		var b strings.Builder
-		b.WriteString(components.Title("ADD WEBHOOK") + "\n\n")
-		b.WriteString(lipgloss.NewStyle().Foreground(primaryColor).Render("Name:\n"))
+		b.WriteString(components.Title(i18n.T("ADD WEBHOOK")) + "\n\n")
+		b.WriteString(lipgloss.NewStyle().Foreground(primaryColor).Render(i18n.T("Name:\n")))
 		b.WriteString(m.inputs[0].View() + "\n\n")
-		b.WriteString(lipgloss.NewStyle().Foreground(primaryColor).Render("Type (discord/slack):\n"))
+		b.WriteString(lipgloss.NewStyle().Foreground(primaryColor).Render(i18n.T("Type (discord/slack):\n")))
 		b.WriteString(m.inputs[1].View() + "\n\n")
-		b.WriteString(lipgloss.NewStyle().Foreground(primaryColor).Render("URL:\n"))
+		b.WriteString(lipgloss.NewStyle().Foreground(primaryColor).Render(i18n.T("URL:\n")))
 		b.WriteString(m.inputs[2].View() + "\n\n")
-		
-		btn := "[ Submit ]"
+
+		btn := i18n.T("[ Submit ]")
 		if m.focusIndex == len(m.inputs) {
 			btn = lipgloss.NewStyle().Foreground(theme.Current.Bg).Background(primaryColor).Bold(true).Render(btn)
 		} else {
 			btn = lipgloss.NewStyle().Foreground(dimColor).Render(btn)
 		}
-		
+
 		b.WriteString(btn + "\n\n")
 		b.WriteString(lipgloss.NewStyle().Foreground(theme.Current.Error).Render(m.status) + "\n")
-		b.WriteString(lipgloss.NewStyle().Foreground(dimColor).Render("Press ESC to cancel."))
+		b.WriteString(lipgloss.NewStyle().Foreground(dimColor).Render(i18n.T("Press ESC to cancel.")))
 		return components.Card(b.String(), 90)
 	}
 
 	var b strings.Builder
-	b.WriteString(components.Title("ALERTS & WEBHOOKS") + "\n\n")
+	b.WriteString(components.Title(i18n.T("ALERTS & WEBHOOKS")) + "\n\n")
 
 	if len(m.webhooks) == 0 {
-		b.WriteString(lipgloss.NewStyle().Foreground(dimColor).Render("No webhooks configured.\n"))
+		b.WriteString(lipgloss.NewStyle().Foreground(dimColor).Render(i18n.T("No webhooks configured.\n")))
 	} else {
 		for i, w := range m.webhooks {
 			cursor := "  "
@@ -240,15 +241,15 @@ func (m Model) View() string {
 				cursor = "▶ "
 				style = lipgloss.NewStyle().Foreground(primaryColor).Bold(true)
 			}
-			
-			statusLabel := lipgloss.NewStyle().Foreground(theme.Current.Success).Render("ON")
+
+			statusLabel := lipgloss.NewStyle().Foreground(theme.Current.Success).Render(i18n.T("ON"))
 			if !w.Enabled {
-				statusLabel = lipgloss.NewStyle().Foreground(theme.Current.Dim).Render("OFF")
+				statusLabel = lipgloss.NewStyle().Foreground(theme.Current.Dim).Render(i18n.T("OFF"))
 			}
 
 			nameStr := lipgloss.NewStyle().Foreground(accentColor).Width(20).Render(w.Name)
 			typeStr := lipgloss.NewStyle().Foreground(theme.Current.Warning).Width(10).Render(string(w.Type))
-			
+
 			errStr := w.LastError
 			if len(errStr) > 40 {
 				errStr = errStr[:37] + "..."
@@ -257,9 +258,9 @@ func (m Model) View() string {
 			b.WriteString(fmt.Sprintf("%s[%s] %s %s %s\n", cursor, statusLabel, nameStr, typeStr, style.Render(errStr)))
 		}
 	}
-	
-	b.WriteString("\n" + lipgloss.NewStyle().Foreground(dimColor).Render("[A] Add   [D] Delete   [T] Toggle   [Up/Down] Navigate"))
-	b.WriteString("\n" + lipgloss.NewStyle().Foreground(dimColor).Render("Status: "+m.status))
+
+	b.WriteString("\n" + lipgloss.NewStyle().Foreground(dimColor).Render(i18n.T("[A] Add   [D] Delete   [T] Toggle   [Up/Down] Navigate")))
+	b.WriteString("\n" + lipgloss.NewStyle().Foreground(dimColor).Render(i18n.T("Status: ")+m.status))
 
 	return components.Card(b.String(), 120)
 }

@@ -41,7 +41,7 @@ func Sparkline(data []float64, width int, color lipgloss.Color) string {
 		} else if val > 100 {
 			val = 100
 		}
-		
+
 		idx := int((val / 100.0) * float64(len(chars)-1))
 		if idx < 0 {
 			idx = 0
